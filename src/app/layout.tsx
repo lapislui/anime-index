@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Navbar from "@/components/Navbar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Anime Index",
-  description: "A personal anime story index with episode-by-episode breakdowns",
+  title: "Animeverse - Anime Index & Story Breakdown",
+  description: "A premium personal anime index, watch list organizer, episode breakdown, and news system.",
 };
 
 export default function RootLayout({
@@ -25,10 +26,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        {children}
+        <Navbar />
+        <main className="flex-1 w-full">
+          {children}
+        </main>
+        <footer className="border-t border-border bg-slate-950/40 py-6 text-center text-xs text-muted">
+          <p>&copy; {new Date().getFullYear()} ANIMEVERSE. Created with premium aesthetics. Powered by Jikan API.</p>
+        </footer>
       </body>
     </html>
   );
 }
+

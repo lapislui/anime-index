@@ -63,60 +63,67 @@ export default function Home() {
   }, [fetchAnimes]);
 
   return (
-    <div className="mx-auto min-h-screen max-w-6xl px-4 py-8">
+    <div className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Anime Index</h1>
-          <p className="mt-1 text-sm text-muted">
-            Your personal anime story collection
+          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-accent to-accent-light bg-clip-text text-transparent sm:text-4xl">
+            Anime Index
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Manage and reflect on your curated personal story journal
           </p>
         </div>
         <Link
           href="/anime/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-light"
+          className="glow-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-lg transition-transform hover:scale-105"
         >
-          + Add Anime
+          + Add Anime Entry
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 space-y-4 rounded-xl border border-border bg-card p-4">
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            placeholder="Search anime..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
-          />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortField)}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-          >
-            <option value="updatedAt">Recently Updated</option>
-            <option value="createdAt">Recently Added</option>
-            <option value="title">Title (A-Z)</option>
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-          >
-            <option value="">All Status</option>
-            <option value="watching">Watching</option>
-            <option value="completed">Completed</option>
-            <option value="dropped">Dropped</option>
-            <option value="planned">Planned</option>
-          </select>
+      <div className="glass-panel mb-8 space-y-4 rounded-2xl p-5 shadow-xl">
+        <div className="flex flex-col gap-3 md:flex-row">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
+            <input
+              type="text"
+              placeholder="Search library..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-border/80 bg-slate-950/50 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortField)}
+              className="rounded-xl border border-border/80 bg-slate-950/50 px-4 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300 cursor-pointer"
+            >
+              <option value="updatedAt">Recently Updated</option>
+              <option value="createdAt">Recently Added</option>
+              <option value="title">Title (A-Z)</option>
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="rounded-xl border border-border/80 bg-slate-950/50 px-4 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300 cursor-pointer"
+            >
+              <option value="">All Status</option>
+              <option value="watching">Watching</option>
+              <option value="completed">Completed</option>
+              <option value="dropped">Dropped</option>
+              <option value="planned">Planned</option>
+            </select>
+          </div>
         </div>
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-border/30">
             <TagBadge
               name="All"
-              color="#6366f1"
+              color="#00e5ff"
               active={selectedTag === ""}
               onClick={() => setSelectedTag("")}
             />
@@ -137,19 +144,23 @@ export default function Home() {
 
       {/* Anime Grid */}
       {loading ? (
-        <div className="py-20 text-center text-muted">Loading...</div>
+        <div className="py-32 text-center text-muted">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-accent border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+          <p className="mt-4 text-sm font-semibold tracking-wide text-muted">Scanning Database...</p>
+        </div>
       ) : animes.length === 0 ? (
-        <div className="py-20 text-center">
-          <p className="text-lg text-muted">No anime found</p>
+        <div className="glass-panel rounded-2xl py-20 text-center shadow-lg border border-border/50">
+          <span className="text-5xl">🎌</span>
+          <p className="mt-4 text-lg font-bold text-muted">No anime entries cataloged yet</p>
           <Link
             href="/anime/new"
-            className="mt-4 inline-block text-accent hover:underline"
+            className="mt-4 inline-block text-sm font-bold text-accent hover:text-accent-light underline transition-colors"
           >
-            Add your first anime
+            Create your first entry
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {animes.map((anime) => (
             <AnimeCard key={anime.id} {...anime} />
           ))}

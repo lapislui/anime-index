@@ -20,10 +20,10 @@ interface AnimeCardProps {
 }
 
 const statusLabels: Record<string, { label: string; className: string }> = {
-  watching: { label: "Watching", className: "bg-green-100 text-green-700" },
-  completed: { label: "Completed", className: "bg-blue-100 text-blue-700" },
-  dropped: { label: "Dropped", className: "bg-red-100 text-red-700" },
-  planned: { label: "Planned", className: "bg-yellow-100 text-yellow-700" },
+  watching: { label: "Watching", className: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" },
+  completed: { label: "Completed", className: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" },
+  dropped: { label: "Dropped", className: "bg-rose-500/10 text-rose-400 border border-rose-500/20" },
+  planned: { label: "Planned", className: "bg-amber-500/10 text-amber-400 border border-amber-500/20" },
 };
 
 export default function AnimeCard({
@@ -38,38 +38,38 @@ export default function AnimeCard({
   const statusInfo = statusLabels[status] || statusLabels.watching;
 
   return (
-    <Link href={`/anime/${id}`}>
-      <div className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
+    <Link href={`/anime/${id}`} className="block">
+      <div className="glass-card group overflow-hidden rounded-xl h-full flex flex-col">
         {/* Cover Image */}
-        <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/20 to-accent-light/20">
+        <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
           {coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={coverImage}
               alt={title}
-              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-4xl text-accent/40">
+            <div className="flex h-full items-center justify-center text-4xl text-accent/30">
               🎬
             </div>
           )}
           <span
-            className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium ${statusInfo.className}`}
+            className={`absolute right-2 top-2 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${statusInfo.className}`}
           >
             {statusInfo.label}
           </span>
         </div>
 
         {/* Info */}
-        <div className="p-4">
-          <h3 className="text-lg font-semibold leading-tight text-foreground line-clamp-1">
+        <div className="p-4 flex flex-col flex-1">
+          <h3 className="text-sm font-bold leading-snug text-foreground line-clamp-1 group-hover:text-accent transition-colors duration-300">
             {title}
           </h3>
           {description && (
-            <p className="mt-1 text-sm text-muted line-clamp-2">{description}</p>
+            <p className="mt-1 text-xs text-muted line-clamp-2 leading-relaxed flex-1">{description}</p>
           )}
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-[10px] font-medium text-accent">
             {_count.episodes} episode{_count.episodes !== 1 ? "s" : ""}
           </p>
           {tags.length > 0 && (
@@ -78,7 +78,7 @@ export default function AnimeCard({
                 <TagBadge key={tag.id} name={tag.name} color={tag.color} />
               ))}
               {tags.length > 3 && (
-                <span className="text-xs text-muted">+{tags.length - 3}</span>
+                <span className="text-[10px] text-muted self-center ml-1">+{tags.length - 3}</span>
               )}
             </div>
           )}

@@ -1,7 +1,8 @@
-import { PrismaClient } from "@/generated/prisma/client";
+import PocketBase from "pocketbase";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const pbUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || "http://127.0.0.1:8090";
+export const pb = new PocketBase(pbUrl);
 
-export const db = globalForPrisma.prisma || new PrismaClient();
+// Turn off auto-cancellation for simple query batching
+pb.autoCancellation(false);
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;

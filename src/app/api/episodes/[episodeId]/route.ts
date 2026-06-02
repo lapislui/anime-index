@@ -1,45 +1,93 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { pb } from "@/lib/db";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
-  const { episodeId } = await params;
-  const episode = await db.episode.findUnique({
-    where: { id: episodeId },
-    include: { media: { orderBy: { order: "asc" } }, anime: true },
-  });
+  try {
+    const { episodeId } = await params;
+    const episode = await pb.collection("episodes").getOne(episodeId, {
+      expand: "anime,medias",
+    });
 
-  if (!episode) {
-    return NextResponse.json({ error: "Episode not found" }, { status: 404 });
+    const formattedEpisode = {
+      id: episode.id,
+      number: episode.number,
+      title: episode.title,
+      story: episode.story,
+      animeId: episode.anime,
+      anime: episode.expand?.anime
+        ? {
+            id: episode.expand.anime.id,
+            title: episode.expand.anime.title,
+            coverImage: episode.expand.anime.coverImage,
+          }
+        : null,
+      media: episode.expand?.medias
+        ? (episode.expand.medias as Array<{ id: string; url: string; type: string; caption?: string }>).map((m) => ({
+            id: m.id,
+            url: m.url,
+            type: m.type,
+            caption: m.caption || null,
+          }))
+        : [],
+    };
+
+    return NextResponse.json(formattedEpisode);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 404 });
   }
-
-  return NextResponse.json(episode);
 }
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
-  const { episodeId } = await params;
-  const body = await request.json();
-  const { number, title, story } = body;
+  try {
+    const { episodeId } = await params;
+    const body = await request.json();
+    const { number, title, story } = body;
 
-  const episode = await db.episode.update({
-    where: { id: episodeId },
-    data: { number, title, story },
-    include: { media: { orderBy: { order: "asc" } } },
-  });
+    const episode = await pb.collection("episodes").update(
+      episodeId,
+      { number, title, story },
+      { expand: "medias" }
+    );
 
-  return NextResponse.json(episode);
+    return NextResponse.json({
+      id: episode.id,
+      number: episode.number,
+      title: episode.title,
+      story: episode.story,
+      animeId: episode.anime,
+      media: episode.expand?.medias
+        ? (episode.expand.medias as Array<{ id: string; url: string; type: string; caption?: string }>).map((m) => ({
+            id: m.id,
+            url: m.url,
+            type: m.type,
+            caption: m.caption || null,
+          }))
+        : [],
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
-  const { episodeId } = await params;
-  await db.episode.delete({ where: { id: episodeId } });
-  return NextResponse.json({ success: true });
+  try {
+    const { episodeId } = await params;
+    await pb.collection("episodes").delete(episodeId);
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
+
