@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const tag = searchParams.get("tag");
     const status = searchParams.get("status");
@@ -11,25 +17,15 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
 
     const where: {
+      userId: string;
       status?: string;
       title?: { contains: string };
       tags?: { some: { name: string } };
-    } = {};
-    if (status) {
-      where.status = status;
-    }
-    if (search) {
-      where.title = {
-        contains: search,
-      };
-    }
-    if (tag) {
-      where.tags = {
-        some: {
-          name: tag,
-        },
-      };
-    }
+    } = { userId: user.id };
+
+    if (status) where.status = status;
+    if (search) where.title = { contains: search };
+    if (tag) where.tags = { some: { name: tag } };
 
     const orderParam = order === "asc" ? "asc" : "desc";
     const orderBy: {
@@ -51,9 +47,7 @@ export async function GET(request: NextRequest) {
       include: {
         tags: true,
         _count: {
-          select: {
-            episodes: true,
-          },
+          select: { episodes: true },
         },
       },
     });
@@ -67,12 +61,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { title, description, coverImage, status, tagIds } = body;
 
-    const tagConnections = tagIds && Array.isArray(tagIds)
-      ? tagIds.map((id: string) => ({ id }))
-      : [];
+    const tagConnections =
+      tagIds && Array.isArray(tagIds) ? tagIds.map((id: string) => ({ id })) : [];
 
     const anime = await db.anime.create({
       data: {
@@ -80,13 +78,12 @@ export async function POST(request: NextRequest) {
         description,
         coverImage,
         status: status || "watching",
+        userId: user.id,
         tags: {
           connect: tagConnections,
         },
       },
-      include: {
-        tags: true,
-      },
+      include: { tags: true },
     });
 
     return NextResponse.json(anime, { status: 201 });

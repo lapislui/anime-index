@@ -8,6 +8,7 @@ export default function Navbar() {
 
   const links = [
     { href: "/", label: "Library", icon: "📚" },
+    { href: "/dashboard", label: "Dashboard", icon: "📊" },
     { href: "/discover", label: "Discover", icon: "🔍" },
     { href: "/organize", label: "Organize", icon: "🏷️" },
     { href: "/news", label: "News", icon: "📰" },

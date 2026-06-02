@@ -10,6 +10,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String?
+  otpCode        String?
+  otpExpiresAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  animes         Anime[]
+  passkeys       Passkey[]
+  sessions       Session[]
+  shareDashboard Boolean   @default(false)
+  shareToken     String    @unique @default(cuid())
+}
+
+model Passkey {
+  id           String @id @default(cuid())
+  credentialId String @unique
+  publicKey    String
+  counter      Int
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+}
+
 model Anime {
   id          String    @id @default(cuid())
   title       String
@@ -20,6 +52,8 @@ model Anime {
   updatedAt   DateTime  @updatedAt
   episodes    Episode[]
   tags        Tag[]     @relation("AnimeToTag")
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Episode {

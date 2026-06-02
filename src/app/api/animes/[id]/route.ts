@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
-    const anime = await db.anime.findUnique({
-      where: { id },
+    const anime = await db.anime.findFirst({
+      where: { id, userId: user.id },
       include: {
         tags: true,
         episodes: {
-          orderBy: {
-            number: "asc",
-          },
+          orderBy: { number: "asc" },
           include: {
-            media: {
-              orderBy: {
-                order: "asc",
-              },
-            },
+            media: { orderBy: { order: "asc" } },
           },
         },
       },
@@ -42,13 +42,23 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
     const { title, description, coverImage, status, tagIds } = body;
 
-    const tagConnections = tagIds && Array.isArray(tagIds)
-      ? tagIds.map((id: string) => ({ id }))
-      : [];
+    // Ensure the anime belongs to the current user
+    const existing = await db.anime.findFirst({ where: { id, userId: user.id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Anime not found" }, { status: 404 });
+    }
+
+    const tagConnections =
+      tagIds && Array.isArray(tagIds) ? tagIds.map((id: string) => ({ id })) : [];
 
     const anime = await db.anime.update({
       where: { id },
@@ -57,13 +67,9 @@ export async function PUT(
         description,
         coverImage,
         status,
-        tags: {
-          set: tagConnections,
-        },
+        tags: { set: tagConnections },
       },
-      include: {
-        tags: true,
-      },
+      include: { tags: true },
     });
 
     return NextResponse.json(anime);
@@ -74,14 +80,24 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
-    await db.anime.delete({
-      where: { id },
-    });
+
+    // Ensure the anime belongs to the current user
+    const existing = await db.anime.findFirst({ where: { id, userId: user.id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Anime not found" }, { status: 404 });
+    }
+
+    await db.anime.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
