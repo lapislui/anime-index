@@ -1,7 +1,11 @@
 import { PrismaClient } from "@/generated/prisma/client";
+import path from "path";
 
-// Manually set or fix DATABASE_URL at runtime for Next.js dev server hot-reloads
-process.env.DATABASE_URL = "file:c:/Users/Keval/anime-index/prisma/dev.db";
+// Resolve database path dynamically in development to prevent working directory issues
+if (process.env.NODE_ENV !== "production") {
+  const dbPath = path.join(process.cwd(), "prisma", "dev.db");
+  process.env.DATABASE_URL = `file:${dbPath}`;
+}
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
