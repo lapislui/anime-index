@@ -50,7 +50,11 @@ export default function OrganizePage() {
       const res = await fetch("/api/tags");
       if (res.ok) {
         const data = await res.json();
-        setTags(data);
+        if (Array.isArray(data)) {
+          setTags(data);
+        } else {
+          setTags([]);
+        }
       }
     } catch (e) {
       console.error(e);

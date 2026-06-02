@@ -41,10 +41,21 @@ export default function Home() {
     if (sortBy) params.set("sort", sortBy);
     if (search) params.set("search", search);
 
-    const res = await fetch(`/api/animes?${params}`);
-    const data = await res.json();
-    setAnimes(data);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/animes?${params}`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAnimes(data);
+      } else {
+        console.error("API returned non-array: ", data);
+        setAnimes([]);
+      }
+    } catch (error) {
+      console.error(error);
+      setAnimes([]);
+    } finally {
+      setLoading(false);
+    }
   }, [selectedTag, statusFilter, sortBy, search]);
 
   useEffect(() => {
@@ -52,9 +63,21 @@ export default function Home() {
     fetch("/api/tags")
       .then((r) => r.json())
       .then((data) => {
-        if (!cancelled) setTags(data);
+        if (!cancelled) {
+          if (Array.isArray(data)) {
+            setTags(data);
+          } else {
+            setTags([]);
+          }
+        }
+      })
+      .catch((e) => {
+        console.error(e);
+        if (!cancelled) setTags([]);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
