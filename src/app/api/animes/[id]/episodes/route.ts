@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pb } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function GET(
   _request: NextRequest,
@@ -7,29 +7,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const episodes = await pb.collection("episodes").getFullList({
-      filter: `anime = "${id}"`,
-      sort: "number",
-      expand: "medias",
+    const episodes = await db.episode.findMany({
+      where: { animeId: id },
+      orderBy: { number: "asc" },
+      include: {
+        media: {
+          orderBy: { order: "asc" },
+        },
+      },
     });
 
-    const formattedEpisodes = episodes.map((ep) => ({
-      id: ep.id,
-      number: ep.number,
-      title: ep.title,
-      story: ep.story,
-      animeId: ep.anime,
-      media: ep.expand?.medias
-        ? (ep.expand.medias as Array<{ id: string; url: string; type: string; caption?: string }>).map((m) => ({
-            id: m.id,
-            url: m.url,
-            type: m.type,
-            caption: m.caption || null,
-          }))
-        : [],
-    }));
-
-    return NextResponse.json(formattedEpisodes);
+    return NextResponse.json(episodes);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -45,24 +33,21 @@ export async function POST(
     const body = await request.json();
     const { number, title, story } = body;
 
-    const episode = await pb.collection("episodes").create({
-      number,
-      title,
-      story,
-      anime: id,
+    const episode = await db.episode.create({
+      data: {
+        number: typeof number === "string" ? parseInt(number, 10) : number,
+        title,
+        story,
+        animeId: id,
+      },
+      include: {
+        media: true,
+      },
     });
 
-    return NextResponse.json({
-      id: episode.id,
-      number: episode.number,
-      title: episode.title,
-      story: episode.story,
-      animeId: episode.anime,
-      media: [],
-    }, { status: 201 });
+    return NextResponse.json(episode, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

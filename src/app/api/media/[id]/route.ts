@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unlink } from "fs/promises";
 import path from "path";
-import { pb } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function DELETE(
   _request: NextRequest,
@@ -9,7 +9,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const media = await pb.collection("medias").getOne(id);
+    const media = await db.media.findUnique({
+      where: { id },
+    });
+
+    if (!media) {
+      return NextResponse.json({ error: "Media not found" }, { status: 404 });
+    }
 
     // Delete the file from disk
     try {
@@ -19,11 +25,12 @@ export async function DELETE(
       // File may already be deleted, continue
     }
 
-    await pb.collection("medias").delete(id);
+    await db.media.delete({
+      where: { id },
+    });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 404 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

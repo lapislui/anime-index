@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pb } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,65 +10,52 @@ export async function GET(request: NextRequest) {
     const order = searchParams.get("order") || "desc";
     const search = searchParams.get("search");
 
-    const filterParts: string[] = [];
-
+    const where: {
+      status?: string;
+      title?: { contains: string };
+      tags?: { some: { name: string } };
+    } = {};
     if (status) {
-      filterParts.push(`status = "${status}"`);
+      where.status = status;
     }
     if (search) {
-      filterParts.push(`title ~ "${search}"`);
+      where.title = {
+        contains: search,
+      };
     }
     if (tag) {
-      filterParts.push(`tags.name = "${tag}"`);
-    }
-
-    const filter = filterParts.join(" && ");
-    
-    // Sort mapping: created/updated in pocketbase are 'created' and 'updated'
-    let pbSort = sort;
-    if (sort === "createdAt") pbSort = "created";
-    if (sort === "updatedAt") pbSort = "updated";
-    
-    const sortParam = (order === "desc" ? "-" : "") + pbSort;
-
-    const options: { expand?: string; sort?: string; filter?: string } = {
-      expand: "tags",
-      sort: sortParam,
-    };
-
-    if (filter) {
-      options.filter = filter;
-    }
-
-    const records = await pb.collection("animes").getFullList(options);
-
-    // Fetch episodes counts
-    let episodes: { anime: string }[] = [];
-    try {
-      episodes = await pb.collection("episodes").getFullList({ fields: "anime" });
-    } catch {
-      // ignore
-    }
-
-    const animes = records.map((record) => {
-      const epCount = episodes.filter((e) => e.anime === record.id).length;
-      return {
-        id: record.id,
-        title: record.title,
-        description: record.description,
-        coverImage: record.coverImage,
-        status: record.status,
-        createdAt: record.created,
-        updatedAt: record.updated,
-        tags: record.expand?.tags
-          ? (record.expand.tags as Array<{ id: string; name: string; color: string }>).map((t) => ({
-              id: t.id,
-              name: t.name,
-              color: t.color,
-            }))
-          : [],
-        _count: { episodes: epCount },
+      where.tags = {
+        some: {
+          name: tag,
+        },
       };
+    }
+
+    const orderParam = order === "asc" ? "asc" : "desc";
+    const orderBy: {
+      title?: "asc" | "desc";
+      createdAt?: "asc" | "desc";
+      updatedAt?: "asc" | "desc";
+    } = {};
+    if (sort === "title") {
+      orderBy.title = orderParam;
+    } else if (sort === "createdAt") {
+      orderBy.createdAt = orderParam;
+    } else {
+      orderBy.updatedAt = orderParam;
+    }
+
+    const animes = await db.anime.findMany({
+      where,
+      orderBy,
+      include: {
+        tags: true,
+        _count: {
+          select: {
+            episodes: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json(animes);
@@ -83,35 +70,28 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, description, coverImage, status, tagIds } = body;
 
-    const anime = await pb.collection("animes").create({
-      title,
-      description,
-      coverImage,
-      status: status || "watching",
-      tags: tagIds || [],
-    }, {
-      expand: "tags",
+    const tagConnections = tagIds && Array.isArray(tagIds)
+      ? tagIds.map((id: string) => ({ id }))
+      : [];
+
+    const anime = await db.anime.create({
+      data: {
+        title,
+        description,
+        coverImage,
+        status: status || "watching",
+        tags: {
+          connect: tagConnections,
+        },
+      },
+      include: {
+        tags: true,
+      },
     });
 
-    return NextResponse.json({
-      id: anime.id,
-      title: anime.title,
-      description: anime.description,
-      coverImage: anime.coverImage,
-      status: anime.status,
-      createdAt: anime.created,
-      updatedAt: anime.updated,
-      tags: anime.expand?.tags
-        ? (anime.expand.tags as Array<{ id: string; name: string; color: string }>).map((t) => ({
-            id: t.id,
-            name: t.name,
-            color: t.color,
-          }))
-        : [],
-    }, { status: 201 });
+    return NextResponse.json(anime, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

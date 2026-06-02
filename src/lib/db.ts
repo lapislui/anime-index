@@ -1,8 +1,10 @@
-import PocketBase from "pocketbase";
+import { PrismaClient } from "@/generated/prisma/client";
 
-const pbUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || "http://127.0.0.1:8090";
-export const pb = new PocketBase(pbUrl);
+// Manually set or fix DATABASE_URL at runtime for Next.js dev server hot-reloads
+process.env.DATABASE_URL = "file:c:/Users/Keval/anime-index/prisma/dev.db";
 
-// Turn off auto-cancellation for simple query batching
-pb.autoCancellation(false);
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
+export const db = globalForPrisma.prisma || new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;

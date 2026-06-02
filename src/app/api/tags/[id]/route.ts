@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pb } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function PUT(
   request: NextRequest,
@@ -10,13 +10,12 @@ export async function PUT(
     const body = await request.json();
     const { name, color } = body;
 
-    const tag = await pb.collection("tags").update(id, { name, color });
-
-    return NextResponse.json({
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
+    const tag = await db.tag.update({
+      where: { id },
+      data: { name, color },
     });
+
+    return NextResponse.json(tag);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -29,11 +28,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await pb.collection("tags").delete(id);
+    await db.tag.delete({
+      where: { id },
+    });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pb } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function GET(
   _request: NextRequest,
@@ -7,70 +7,33 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const anime = await pb.collection("animes").getOne(id, {
-      expand: "tags",
+    const anime = await db.anime.findUnique({
+      where: { id },
+      include: {
+        tags: true,
+        episodes: {
+          orderBy: {
+            number: "asc",
+          },
+          include: {
+            media: {
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+        },
+      },
     });
 
-    let episodes: Array<{
-      id: string;
-      number: number;
-      title: string;
-      story: string;
-      anime: string;
-      expand?: {
-        medias?: Array<{
-          id: string;
-          url: string;
-          type: string;
-          caption?: string;
-        }>;
-      };
-    }> = [];
-    try {
-      episodes = await pb.collection("episodes").getFullList({
-        filter: `anime = "${id}"`,
-        sort: "number",
-        expand: "medias",
-      });
-    } catch {
-      // ignore
+    if (!anime) {
+      return NextResponse.json({ error: "Anime not found" }, { status: 404 });
     }
 
-    const formattedAnime = {
-      id: anime.id,
-      title: anime.title,
-      description: anime.description,
-      coverImage: anime.coverImage,
-      status: anime.status,
-      createdAt: anime.created,
-      updatedAt: anime.updated,
-      tags: anime.expand?.tags
-        ? (anime.expand.tags as Array<{ id: string; name: string; color: string }>).map((t) => ({
-            id: t.id,
-            name: t.name,
-            color: t.color,
-          }))
-        : [],
-      episodes: episodes.map((ep) => ({
-        id: ep.id,
-        number: ep.number,
-        title: ep.title,
-        story: ep.story,
-        media: ep.expand?.medias
-          ? (ep.expand.medias as Array<{ id: string; url: string; type: string; caption?: string }>).map((m) => ({
-              id: m.id,
-              url: m.url,
-              type: m.type,
-              caption: m.caption || null,
-            }))
-          : [],
-      })),
-    };
-
-    return NextResponse.json(formattedAnime);
+    return NextResponse.json(anime);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 404 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -83,32 +46,27 @@ export async function PUT(
     const body = await request.json();
     const { title, description, coverImage, status, tagIds } = body;
 
-    const anime = await pb.collection("animes").update(id, {
-      title,
-      description,
-      coverImage,
-      status,
-      tags: tagIds || [],
-    }, {
-      expand: "tags",
+    const tagConnections = tagIds && Array.isArray(tagIds)
+      ? tagIds.map((id: string) => ({ id }))
+      : [];
+
+    const anime = await db.anime.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        coverImage,
+        status,
+        tags: {
+          set: tagConnections,
+        },
+      },
+      include: {
+        tags: true,
+      },
     });
 
-    return NextResponse.json({
-      id: anime.id,
-      title: anime.title,
-      description: anime.description,
-      coverImage: anime.coverImage,
-      status: anime.status,
-      createdAt: anime.created,
-      updatedAt: anime.updated,
-      tags: anime.expand?.tags
-        ? (anime.expand.tags as Array<{ id: string; name: string; color: string }>).map((t) => ({
-            id: t.id,
-            name: t.name,
-            color: t.color,
-          }))
-        : [],
-    });
+    return NextResponse.json(anime);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -121,11 +79,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await pb.collection("animes").delete(id);
+    await db.anime.delete({
+      where: { id },
+    });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

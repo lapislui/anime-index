@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { pb } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,36 +37,30 @@ export async function POST(request: NextRequest) {
     // Get the current max order for this episode's media
     let order = 0;
     try {
-      const records = await pb.collection("medias").getFullList({
-        filter: `episode = "${episodeId}"`,
-        sort: "-order",
+      const lastMedia = await db.media.findFirst({
+        where: { episodeId },
+        orderBy: { order: "desc" },
       });
-      if (records.length > 0) {
-        order = records[0].order + 1;
+      if (lastMedia) {
+        order = lastMedia.order + 1;
       }
     } catch {
       // ignore
     }
 
-    const media = await pb.collection("medias").create({
-      url,
-      type,
-      caption,
-      order,
-      episode: episodeId,
+    const media = await db.media.create({
+      data: {
+        url,
+        type,
+        caption,
+        order,
+        episodeId,
+      },
     });
 
-    return NextResponse.json({
-      id: media.id,
-      url: media.url,
-      type: media.type,
-      caption: media.caption,
-      order: media.order,
-      episodeId: media.episode,
-    }, { status: 201 });
+    return NextResponse.json(media, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
