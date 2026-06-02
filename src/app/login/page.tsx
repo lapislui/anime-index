@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   startRegistration,
   startAuthentication,
@@ -10,8 +10,10 @@ import {
 type Tab = "login" | "register" | "otp" | "passkey";
 type OtpStep = "email" | "code";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("from") || "/";
   const [tab, setTab] = useState<Tab>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,10 +28,10 @@ export default function LoginPage() {
     fetch("/api/auth/logout")
       .then((r) => r.json())
       .then((d) => {
-        if (d.user) router.push("/");
+        if (d.user) router.push(redirectTo);
       })
       .catch(() => {});
-  }, [router]);
+  }, [router, redirectTo]);
 
   const reset = () => {
     setError("");
@@ -49,7 +51,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      router.push("/");
+      router.push(redirectTo);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -70,7 +72,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Registration failed");
-      router.push("/");
+      router.push(redirectTo);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -113,7 +115,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "OTP verification failed");
-      router.push("/");
+      router.push(redirectTo);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "OTP verification failed");
     } finally {
@@ -177,7 +179,7 @@ export default function LoginPage() {
       });
       const verData = await verRes.json();
       if (!verRes.ok) throw new Error(verData.error || "Passkey authentication failed");
-      router.push("/");
+      router.push(redirectTo);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Passkey authentication failed");
     } finally {
@@ -449,5 +451,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }
