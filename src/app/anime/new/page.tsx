@@ -25,20 +25,36 @@ export default function NewAnimePage() {
   useEffect(() => {
     fetch("/api/tags")
       .then((r) => r.json())
-      .then(setTags);
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setTags(data);
+        } else {
+          setTags([]);
+        }
+      })
+      .catch((e) => {
+        console.error(e);
+        setTags([]);
+      });
   }, []);
 
   const createTag = async () => {
     if (!newTagName.trim()) return;
-    const res = await fetch("/api/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
-    });
-    const tag = await res.json();
-    setTags([...tags, tag]);
-    setSelectedTagIds([...selectedTagIds, tag.id]);
-    setNewTagName("");
+    try {
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
+      });
+      if (res.ok) {
+        const tag = await res.json();
+        setTags([...tags, tag]);
+        setSelectedTagIds([...selectedTagIds, tag.id]);
+        setNewTagName("");
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const toggleTag = (id: string) => {
