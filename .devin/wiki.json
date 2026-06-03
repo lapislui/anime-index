@@ -1,0 +1,128 @@
+{
+  "title": "Anime Index – Developer Wiki",
+  "description": "Personal anime storytelling platform where users catalog anime, write episode-by-episode story breakdowns with images and video clips, and organize entries with a tagging system.",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Project Overview",
+      "description": "High-level summary of what Anime Index is, its purpose, and key features.",
+      "include": [
+        "README.md",
+        "AGENTS.md"
+      ]
+    },
+    {
+      "id": "architecture",
+      "title": "Architecture & Tech Stack",
+      "description": "Explains the Next.js 16 App Router architecture, TypeScript setup, Tailwind CSS v4 configuration, Prisma ORM integration, and SQLite database.",
+      "include": [
+        "next.config.ts",
+        "tsconfig.json",
+        "postcss.config.mjs",
+        "prisma.config.ts",
+        "src/middleware.ts",
+        "src/app/layout.tsx",
+        "src/app/globals.css"
+      ]
+    },
+    {
+      "id": "database",
+      "title": "Database Schema",
+      "description": "Covers the Prisma schema: User, Session, Passkey, Anime, Episode, Media, and Tag models, their relationships, and migration workflow.",
+      "include": [
+        "prisma/schema.prisma",
+        "prisma/migrations"
+      ]
+    },
+    {
+      "id": "auth",
+      "title": "Authentication",
+      "description": "Session-based auth using OTP email login and WebAuthn/Passkey support. Covers middleware-enforced route protection, session tokens, and registration/login flows.",
+      "include": [
+        "src/lib/auth.ts",
+        "src/middleware.ts",
+        "src/app/login",
+        "src/app/api/auth"
+      ]
+    },
+    {
+      "id": "api-routes",
+      "title": "API Routes",
+      "description": "All REST-style API handlers under src/app/api/. Documents endpoints for anime CRUD, episode management, media uploads, tag management, and shareable stats.",
+      "include": [
+        "src/app/api/animes",
+        "src/app/api/episodes",
+        "src/app/api/media",
+        "src/app/api/tags",
+        "src/app/api/upload",
+        "src/app/api/stats"
+      ]
+    },
+    {
+      "id": "pages",
+      "title": "Pages & UI",
+      "description": "Overview of all user-facing pages: home/landing, dashboard (anime list), anime detail & episode viewer, discover feed, organize (drag-and-drop), watch tracker, and news.",
+      "include": [
+        "src/app/page.tsx",
+        "src/app/dashboard",
+        "src/app/anime",
+        "src/app/discover",
+        "src/app/organize",
+        "src/app/watch",
+        "src/app/shared",
+        "src/app/news"
+      ]
+    },
+    {
+      "id": "components",
+      "title": "Shared Components",
+      "description": "Reusable React components: AnimeCard, MediaGallery, MediaUpload, Navbar, and TagBadge.",
+      "include": [
+        "src/components"
+      ]
+    },
+    {
+      "id": "lib",
+      "title": "Library Utilities",
+      "description": "Shared server-side utilities: db.ts (Prisma client singleton) and auth.ts (session helpers).",
+      "include": [
+        "src/lib"
+      ]
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration & Environment",
+      "description": "Environment variables (DATABASE_URL, auth secrets), ESLint flat config, path aliases (@/*), and build/dev commands.",
+      "include": [
+        "eslint.config.mjs",
+        "package.json",
+        ".gitignore"
+      ],
+      "exclude": [
+        ".env",
+        "node_modules",
+        ".next",
+        "src/generated"
+      ]
+    }
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".git",
+    "src/generated/prisma",
+    "prisma/dev.db",
+    "old-anime",
+    "tsconfig.tsbuildinfo",
+    "package-lock.json"
+  ],
+  "conventions": {
+    "language": "TypeScript (strict mode)",
+    "framework": "Next.js 16 App Router",
+    "styling": "Tailwind CSS v4 via @tailwindcss/postcss",
+    "orm": "Prisma with PostgreSQL (dev: SQLite via DATABASE_URL)",
+    "pathAlias": "@/* maps to src/*",
+    "apiConvention": "App Router route handlers (route.ts) under src/app/api/",
+    "authMechanism": "Cookie-based session tokens + OTP email + WebAuthn Passkeys"
+  }
+}
