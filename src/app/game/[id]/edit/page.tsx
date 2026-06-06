@@ -28,11 +28,15 @@ export default function EditGamePage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const [friends, setFriends] = useState<{ id: string; userId: string; email: string }[]>([]);
+  const [playedWithId, setPlayedWithId] = useState("");
+
   useEffect(() => {
     Promise.all([
       fetch(`/api/games/${params.id}`).then((r) => r.json()),
       fetch("/api/tags?type=game").then((r) => r.json()),
-    ]).then(([game, allTags]) => {
+      fetch("/api/friends").then((r) => r.json()),
+    ]).then(([game, allTags, friendsData]) => {
       setTitle(game.title);
       setDescription(game.description || "");
       setCoverImage(game.coverImage || "");
@@ -41,7 +45,9 @@ export default function EditGamePage() {
       setFormat(game.format || "");
       setGenres(game.genres || "");
       setSelectedTagIds(game.tags.map((t: Tag) => t.id));
+      setPlayedWithId(game.playedWithId || "");
       setTags(allTags);
+      setFriends(friendsData.following || []);
       setLoading(false);
     }).catch(err => {
       console.error(err);
@@ -92,6 +98,7 @@ export default function EditGamePage() {
           format: format.trim() || null,
           genres: genres.trim() || null,
           tagIds: selectedTagIds,
+          playedWithId: playedWithId || null,
         }),
       });
 
@@ -204,6 +211,24 @@ export default function EditGamePage() {
             <option value="completed">Completed</option>
             <option value="backlog">Backlog</option>
             <option value="dropped">Dropped</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            Played With (Collaborator)
+          </label>
+          <select
+            value={playedWithId}
+            onChange={(e) => setPlayedWithId(e.target.value)}
+            className="w-full rounded-md border border-border bg-slate-950/50 px-3 py-2 text-foreground focus:outline-none focus:border-accent cursor-pointer"
+          >
+            <option value="">Single Player (None)</option>
+            {friends.map((f) => (
+              <option key={f.userId} value={f.userId}>
+                {f.email}
+              </option>
+            ))}
           </select>
         </div>
 

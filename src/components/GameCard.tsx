@@ -17,6 +17,7 @@ interface GameCardProps {
   status: string;
   tags: Tag[];
   _count: { chapters: number };
+  playedWith?: { email: string } | null;
 }
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -38,6 +39,7 @@ export default function GameCard({
   status,
   tags,
   _count,
+  playedWith,
 }: GameCardProps) {
   const statusInfo = statusLabels[status] || statusLabels.playing;
 
@@ -73,9 +75,17 @@ export default function GameCard({
           {description && (
             <p className="mt-1 text-xs text-muted line-clamp-2 leading-relaxed flex-1">{description}</p>
           )}
-          <p className="mt-2 text-[10px] font-medium text-accent">
-            {_count.chapters} journal log{_count.chapters !== 1 ? "s" : ""}
-          </p>
+          <div className="mt-2 flex flex-col gap-0.5">
+            <p className="text-[10px] font-medium text-accent">
+              {_count.chapters} journal log{_count.chapters !== 1 ? "s" : ""}
+            </p>
+            {playedWith && (
+              <p className="text-[10px] text-muted-light flex items-center gap-1">
+                <span>👥 Co-op:</span>
+                <span className="text-accent-light font-bold truncate">{playedWith.email.split("@")[0]}</span>
+              </p>
+            )}
+          </div>
           {tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {tags.slice(0, 3).map((tag) => (

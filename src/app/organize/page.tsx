@@ -162,6 +162,13 @@ export default function OrganizePage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Game custom inputs
+  const [gameStatus, setGameStatus] = useState("playing");
+  const [gamePlatform, setGamePlatform] = useState("");
+  const [gameGenres, setGameGenres] = useState("");
+  const [friends, setFriends] = useState<{ id: string; userId: string; email: string }[]>([]);
+  const [playedWithId, setPlayedWithId] = useState("");
+
   // Fetch db tags
   const fetchTags = useCallback(async () => {
     try {
@@ -182,6 +189,14 @@ export default function OrganizePage() {
 
   useEffect(() => {
     fetchTags();
+    fetch("/api/friends")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && Array.isArray(data.following)) {
+          setFriends(data.following);
+        }
+      })
+      .catch((e) => console.error(e));
   }, [fetchTags]);
 
   // Clear selected item on mode switch
@@ -191,6 +206,21 @@ export default function OrganizePage() {
     setSearchResults([]);
     setAssignedTags([]);
   }, [mode]);
+
+  useEffect(() => {
+    if (selectedItem && mode === "games") {
+      const gameItem = selectedItem as GameCatalogItem;
+      setGameStatus("playing"); // Default fallback
+      setGamePlatform(gameItem.type || "");
+      setGameGenres(gameItem.genres || "");
+      setPlayedWithId("");
+    } else {
+      setGameStatus("playing");
+      setGamePlatform("");
+      setGameGenres("");
+      setPlayedWithId("");
+    }
+  }, [selectedItem, mode]);
 
   const handleCreateTag = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -334,21 +364,23 @@ export default function OrganizePage() {
         year?: number | null;
         format?: string | null;
         genres?: string | null;
+        playedWithId?: string | null;
       } = {
         title: selectedItem.title_english || selectedItem.title,
         description: selectedItem.synopsis,
         coverImage: isGame 
           ? (selectedItem as GameCatalogItem).coverImage 
           : (selectedItem as MALAnimeResult).images?.jpg?.large_image_url,
-        status: isGame ? "playing" : "watching",
+        status: isGame ? gameStatus : "watching",
         tagIds: assignedTags.map((t) => t.id),
       };
 
       if (isGame) {
         const gameItem = selectedItem as GameCatalogItem;
         payload.year = gameItem.year;
-        payload.format = gameItem.type;
-        payload.genres = gameItem.genres;
+        payload.format = gamePlatform;
+        payload.genres = gameGenres;
+        payload.playedWithId = playedWithId || null;
       } else {
         const animeItem = selectedItem as MALAnimeResult;
         payload.year = animeItem.year || null;
@@ -587,6 +619,66 @@ export default function OrganizePage() {
                       </button>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {selectedItem && mode === "games" && (
+              <div className="pt-4 border-t border-border/30 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Customize Game Attributes:</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[9px] font-bold text-muted uppercase tracking-wider mb-1">Status</label>
+                    <select
+                      value={gameStatus}
+                      onChange={(e) => setGameStatus(e.target.value)}
+                      className="w-full rounded-xl border border-border/60 bg-slate-950/60 px-3 py-2 text-xs text-foreground focus:border-accent cursor-pointer"
+                    >
+                      <option value="planning">Planning</option>
+                      <option value="playing">Playing</option>
+                      <option value="installed">Installed</option>
+                      <option value="completed">Completed</option>
+                      <option value="backlog">Backlog</option>
+                      <option value="dropped">Dropped</option>
+                      <option value="played">Played</option>
+                      <option value="cant_play">Can't Play</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-muted uppercase tracking-wider mb-1">Platform</label>
+                    <input
+                      type="text"
+                      value={gamePlatform}
+                      onChange={(e) => setGamePlatform(e.target.value)}
+                      className="w-full rounded-xl border border-border/60 bg-slate-950/60 px-3 py-2 text-xs text-foreground focus:border-accent"
+                      placeholder="e.g. PC, PS5"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-muted uppercase tracking-wider mb-1">Genres</label>
+                  <input
+                    type="text"
+                    value={gameGenres}
+                    onChange={(e) => setGameGenres(e.target.value)}
+                    className="w-full rounded-xl border border-border/60 bg-slate-950/60 px-3 py-2 text-xs text-foreground focus:border-accent"
+                    placeholder="e.g. RPG, Action"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-muted uppercase tracking-wider mb-1">Played With (Collaborator)</label>
+                  <select
+                    value={playedWithId}
+                    onChange={(e) => setPlayedWithId(e.target.value)}
+                    className="w-full rounded-xl border border-border/60 bg-slate-950/60 px-3 py-2 text-xs text-foreground focus:border-accent cursor-pointer"
+                  >
+                    <option value="">Single Player (None)</option>
+                    {friends.map((f) => (
+                      <option key={f.userId} value={f.userId}>
+                        {f.email}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}

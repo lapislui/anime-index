@@ -14,9 +14,18 @@ export async function GET(
 
     const { id } = await params;
     const game = await db.game.findFirst({
-      where: { id, userId: user.id },
+      where: {
+        id,
+        OR: [
+          { userId: user.id },
+          { playedWithId: user.id }
+        ]
+      },
       include: {
         tags: true,
+        playedWith: {
+          select: { id: true, email: true }
+        },
         chapters: {
           orderBy: { number: "asc" },
           include: {
@@ -49,7 +58,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { title, description, coverImage, status, year, format, genres, tagIds } = body;
+    const { title, description, coverImage, status, year, format, genres, tagIds, playedWithId } = body;
 
     // Ensure the game belongs to the current user
     const existing = await db.game.findFirst({ where: { id, userId: user.id } });
@@ -70,9 +79,15 @@ export async function PUT(
         year: year ? parseInt(year, 10) : null,
         format,
         genres,
+        playedWithId: playedWithId || null,
         tags: { set: tagConnections },
       },
-      include: { tags: true },
+      include: {
+        tags: true,
+        playedWith: {
+          select: { id: true, email: true }
+        }
+      },
     });
 
     return NextResponse.json(game);

@@ -44,9 +44,17 @@ export async function GET(
       return NextResponse.json(movies);
     } else if (mode === "games") {
       const games = await db.game.findMany({
-        where: { userId: user.id },
+        where: {
+          OR: [
+            { userId: user.id },
+            { playedWithId: user.id }
+          ]
+        },
         include: {
           tags: true,
+          playedWith: {
+            select: { id: true, email: true }
+          },
           _count: { select: { chapters: true } },
         },
         orderBy: { updatedAt: "desc" },

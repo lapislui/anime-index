@@ -26,6 +26,9 @@ export default function NewGamePage() {
   const [newTagColor, setNewTagColor] = useState("#6366f1");
   const [saving, setSaving] = useState(false);
 
+  const [friends, setFriends] = useState<{ id: string; userId: string; email: string }[]>([]);
+  const [playedWithId, setPlayedWithId] = useState("");
+
   useEffect(() => {
     fetch("/api/tags?type=game")
       .then((r) => r.json())
@@ -40,6 +43,15 @@ export default function NewGamePage() {
         console.error(e);
         setTags([]);
       });
+
+    fetch("/api/friends")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && Array.isArray(data.following)) {
+          setFriends(data.following);
+        }
+      })
+      .catch((e) => console.error(e));
   }, []);
 
   const createTag = async () => {
@@ -85,6 +97,7 @@ export default function NewGamePage() {
           format: format.trim() || null,
           genres: genres.trim() || null,
           tagIds: selectedTagIds,
+          playedWithId: playedWithId || null,
         }),
       });
 
@@ -196,6 +209,24 @@ export default function NewGamePage() {
             <option value="completed">Completed</option>
             <option value="backlog">Backlog</option>
             <option value="dropped">Dropped</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            Played With (Collaborator)
+          </label>
+          <select
+            value={playedWithId}
+            onChange={(e) => setPlayedWithId(e.target.value)}
+            className="w-full rounded-md border border-border bg-slate-950/50 px-3 py-2 text-foreground focus:outline-none focus:border-accent cursor-pointer"
+          >
+            <option value="">Single Player (None)</option>
+            {friends.map((f) => (
+              <option key={f.userId} value={f.userId}>
+                {f.email}
+              </option>
+            ))}
           </select>
         </div>
 

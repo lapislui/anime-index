@@ -39,6 +39,7 @@ interface Game {
   updatedAt: string;
   tags: Tag[];
   chapters: Chapter[];
+  playedWith?: { id: string; email: string } | null;
 }
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -190,6 +191,11 @@ export default function GameDetailPage() {
             {game.year && (
               <span className="rounded-full bg-slate-900 border border-border/80 px-3 py-1 text-xs text-muted">
                 Year: {game.year}
+              </span>
+            )}
+            {game.playedWith && (
+              <span className="rounded-full bg-accent/10 border border-accent/20 px-3 py-1 text-xs text-accent font-semibold flex items-center gap-1">
+                👥 Played With: {game.playedWith.email}
               </span>
             )}
           </div>

@@ -52,9 +52,18 @@ export async function GET(
       return NextResponse.json(movie);
     } else if (mode === "games") {
       const game = await db.game.findFirst({
-        where: { id: itemId, userId: user.id },
+        where: {
+          id: itemId,
+          OR: [
+            { userId: user.id },
+            { playedWithId: user.id }
+          ]
+        },
         include: {
           tags: true,
+          playedWith: {
+            select: { id: true, email: true }
+          },
           chapters: {
             include: { media: true },
             orderBy: { number: "asc" },

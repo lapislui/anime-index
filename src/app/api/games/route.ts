@@ -19,8 +19,28 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get("sort") || "updatedAt";
     const order = searchParams.get("order") || "desc";
     const search = searchParams.get("search");
+    const collaborator = searchParams.get("collaborator");
 
-    const where: Prisma.GameWhereInput = { userId: user.id };
+    const where: Prisma.GameWhereInput = {};
+
+    if (collaborator) {
+      if (collaborator === "any") {
+        where.OR = [
+          { userId: user.id, playedWithId: { not: null } },
+          { playedWithId: user.id }
+        ];
+      } else {
+        where.OR = [
+          { userId: user.id, playedWithId: collaborator },
+          { userId: collaborator, playedWithId: user.id }
+        ];
+      }
+    } else {
+      where.OR = [
+        { userId: user.id },
+        { playedWithId: user.id }
+      ];
+    }
 
     if (status) where.status = status;
     if (format) where.format = format;
@@ -57,6 +77,9 @@ export async function GET(request: NextRequest) {
       orderBy,
       include: {
         tags: true,
+        playedWith: {
+          select: { id: true, email: true }
+        },
         _count: {
           select: { chapters: true },
         },
@@ -78,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, coverImage, status, year, format, genres, tagIds } = body;
+    const { title, description, coverImage, status, year, format, genres, tagIds, playedWithId } = body;
 
     const tagConnections =
       tagIds && Array.isArray(tagIds) ? tagIds.map((id: string) => ({ id })) : [];
@@ -93,11 +116,17 @@ export async function POST(request: NextRequest) {
         format,
         genres,
         userId: user.id,
+        playedWithId: playedWithId || null,
         tags: {
           connect: tagConnections,
         },
       },
-      include: { tags: true },
+      include: {
+        tags: true,
+        playedWith: {
+          select: { id: true, email: true }
+        }
+      },
     });
 
     return NextResponse.json(game, { status: 201 });

@@ -19,7 +19,8 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   animes         Anime[]
-  games          Game[]
+  games          Game[]    @relation("UserGames")
+  sharedGames    Game[]    @relation("PlayedWith")
   movies         Movie[]
   passkeys       Passkey[]
   sessions       Session[]
@@ -134,7 +135,9 @@ model Game {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation("UserGames", fields: [userId], references: [id], onDelete: Cascade)
+  playedWithId String?
+  playedWith   User?     @relation("PlayedWith", fields: [playedWithId], references: [id], onDelete: SetNull)
   tags        Tag[]     @relation("GameToTag")
   chapters    Chapter[]
 }

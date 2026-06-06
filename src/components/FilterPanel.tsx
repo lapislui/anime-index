@@ -25,6 +25,10 @@ interface FilterPanelProps {
   setSelectedStatus: (status: string) => void;
   selectedFormat: string;
   setSelectedFormat: (format: string) => void;
+
+  selectedCollaborator?: string;
+  setSelectedCollaborator?: (collaborator: string) => void;
+  friends?: { userId: string; email: string }[];
 }
 
 export default function FilterPanel({
@@ -43,6 +47,9 @@ export default function FilterPanel({
   setSelectedStatus,
   selectedFormat,
   setSelectedFormat,
+  selectedCollaborator,
+  setSelectedCollaborator,
+  friends,
 }: FilterPanelProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   
@@ -112,7 +119,7 @@ export default function FilterPanel({
 
   return (
     <div ref={dropdownRef} className="glass-panel rounded-2xl p-5 shadow-xl space-y-4 border border-border/40">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${mode === "games" ? "md:grid-cols-3 lg:grid-cols-6" : "md:grid-cols-5"}`}>
         
         {/* Genres Dropdown */}
         <div className="relative">
@@ -355,6 +362,80 @@ export default function FilterPanel({
             </div>
           )}
         </div>
+
+        {/* Played With / Collaborator Dropdown (Only for Games) */}
+        {mode === "games" && setSelectedCollaborator && (
+          <div className="relative">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted block mb-1">Played With</label>
+            <div className="relative">
+              <button
+                onClick={() => toggleDropdown("collaborator")}
+                className="flex items-center justify-between w-full rounded-xl border border-border/80 bg-slate-950/50 px-4 py-2.5 text-xs text-foreground focus:border-accent hover:border-accent/40 focus:outline-none transition-all duration-300 cursor-pointer"
+              >
+                <span className="truncate">
+                  {selectedCollaborator === "any"
+                    ? "Co-op (Any Friend)"
+                    : selectedCollaborator
+                    ? (friends?.find((f) => f.userId === selectedCollaborator)?.email.split("@")[0] || "Selected Friend")
+                    : "All Games (Solo & Co-op)"}
+                </span>
+                <span className={`text-[10px] ml-1 transition-transform ${activeDropdown === "collaborator" ? "rotate-180" : ""}`}>▼</span>
+              </button>
+              {selectedCollaborator && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCollaborator("");
+                  }}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 text-muted hover:text-foreground text-xs"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            
+            {activeDropdown === "collaborator" && (
+              <div className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-xl border border-border bg-slate-950 p-1 shadow-2xl">
+                <button
+                  onClick={() => {
+                    setSelectedCollaborator("");
+                    setActiveDropdown(null);
+                  }}
+                  className={`w-full text-left rounded-lg px-3 py-2 text-xs hover:bg-white/5 text-foreground ${
+                    !selectedCollaborator ? "bg-accent/10 text-accent font-semibold" : ""
+                  }`}
+                >
+                  All Games (Solo & Co-op)
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedCollaborator("any");
+                    setActiveDropdown(null);
+                  }}
+                  className={`w-full text-left rounded-lg px-3 py-2 text-xs hover:bg-white/5 text-foreground ${
+                    selectedCollaborator === "any" ? "bg-accent/10 text-accent font-semibold" : ""
+                  }`}
+                >
+                  Co-op Games (Any Friend)
+                </button>
+                {friends?.map((f) => (
+                  <button
+                    key={f.userId}
+                    onClick={() => {
+                      setSelectedCollaborator(f.userId);
+                      setActiveDropdown(null);
+                    }}
+                    className={`w-full text-left rounded-lg px-3 py-2 text-xs hover:bg-white/5 text-foreground ${
+                      selectedCollaborator === f.userId ? "bg-accent/10 text-accent font-semibold" : ""
+                    }`}
+                  >
+                    Played with {f.email.split("@")[0]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

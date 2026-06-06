@@ -26,6 +26,7 @@ interface Item {
   genres: string | null;
   tags: Tag[];
   _count: { episodes?: number; chapters?: number; parts?: number };
+  playedWith?: { id: string; email: string } | null;
 }
 
 type SortField = "updatedAt" | "title" | "createdAt";
@@ -47,6 +48,10 @@ export default function LibraryPage() {
   const [sortBy, setSortBy] = useState<SortField>("updatedAt");
   const [loading, setLoading] = useState(true);
 
+  // Collaborator filtering states
+  const [friends, setFriends] = useState<{ id: string; userId: string; email: string }[]>([]);
+  const [selectedCollaborator, setSelectedCollaborator] = useState<string>("");
+
   // Reset filters when switching modes
   useEffect(() => {
     setSelectedGenres([]);
@@ -54,8 +59,20 @@ export default function LibraryPage() {
     setSelectedYear("");
     setSelectedStatus("");
     setSelectedFormat("");
+    setSelectedCollaborator("");
     setSearch("");
   }, [mode]);
+
+  useEffect(() => {
+    fetch("/api/friends")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && Array.isArray(data.following)) {
+          setFriends(data.following);
+        }
+      })
+      .catch((e) => console.error(e));
+  }, []);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -65,6 +82,7 @@ export default function LibraryPage() {
     if (selectedYear) params.set("year", selectedYear);
     if (sortBy) params.set("sort", sortBy);
     if (search) params.set("search", search);
+    if (selectedCollaborator) params.set("collaborator", selectedCollaborator);
 
     try {
       const endpoint = mode === "games" ? "/api/games" : mode === "movies" ? "/api/movies" : "/api/animes";
@@ -82,7 +100,7 @@ export default function LibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [mode, selectedStatus, selectedFormat, selectedYear, sortBy, search]);
+  }, [mode, selectedStatus, selectedFormat, selectedYear, sortBy, search, selectedCollaborator]);
 
   useEffect(() => {
     let cancelled = false;
@@ -231,6 +249,9 @@ export default function LibraryPage() {
           setSelectedStatus={setSelectedStatus}
           selectedFormat={selectedFormat}
           setSelectedFormat={setSelectedFormat}
+          selectedCollaborator={selectedCollaborator}
+          setSelectedCollaborator={setSelectedCollaborator}
+          friends={friends}
         />
       </div>
 
@@ -264,6 +285,7 @@ export default function LibraryPage() {
                 status={item.status}
                 tags={item.tags}
                 _count={{ chapters: item._count.chapters || 0 }}
+                playedWith={item.playedWith}
               />
             ) : mode === "movies" ? (
               <MovieCard 
