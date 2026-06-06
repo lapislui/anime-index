@@ -53,12 +53,16 @@ export default function Navbar() {
     { href: "/", label: "Discover", icon: "🔍" },
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
     { href: "/library", label: "Library", icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📚" },
+    { href: "/friends", label: "Friends", icon: "👥" },
     { href: "/organize", label: "Organize", icon: "🏷️" },
     { href: "/news", label: "News", icon: "📰" },
   ];
 
   const filteredLinks = links.filter((link) => {
     if (mode !== "anime" && (link.label === "Discover" || link.label === "News")) {
+      return false;
+    }
+    if (link.label === "Friends" && !user) {
       return false;
     }
     return true;
