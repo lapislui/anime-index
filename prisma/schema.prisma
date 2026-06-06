@@ -111,11 +111,14 @@ model Media {
 
 model Tag {
   id     String  @id @default(cuid())
-  name   String  @unique
+  name   String
+  type   String  @default("anime") // "anime", "game", "movie"
   color  String  @default("#6366f1") // Default indigo color
   animes Anime[] @relation("AnimeToTag")
   games  Game[]  @relation("GameToTag")
   movies Movie[] @relation("MovieToTag")
+
+  @@unique([name, type])
 }
 
 model Game {

@@ -31,7 +31,7 @@ export default function EditGamePage() {
   useEffect(() => {
     Promise.all([
       fetch(`/api/games/${params.id}`).then((r) => r.json()),
-      fetch("/api/tags").then((r) => r.json()),
+      fetch("/api/tags?type=game").then((r) => r.json()),
     ]).then(([game, allTags]) => {
       setTitle(game.title);
       setDescription(game.description || "");
@@ -55,7 +55,7 @@ export default function EditGamePage() {
       const res = await fetch("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
+        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor, type: "game" }),
       });
       if (res.ok) {
         const tag = await res.json();
@@ -198,10 +198,12 @@ export default function EditGamePage() {
             onChange={(e) => setStatus(e.target.value)}
             className="w-full rounded-md border border-border bg-slate-950/50 px-3 py-2 text-foreground focus:outline-none focus:border-accent cursor-pointer"
           >
+            <option value="planning">Planning</option>
             <option value="playing">Playing</option>
-            <option value="played">Played</option>
+            <option value="installed">Installed</option>
+            <option value="completed">Completed</option>
             <option value="backlog">Backlog</option>
-            <option value="cant_play">Can&apos;t Play</option>
+            <option value="dropped">Dropped</option>
           </select>
         </div>
 

@@ -82,6 +82,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       const topTags = await db.tag.findMany({
         take: 5,
+        where: { type: "movie" },
         include: {
           _count: { select: { movies: true } },
         },
@@ -131,7 +132,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         _count: { _all: true },
       });
 
-      const statusCounts = { played: 0, playing: 0, backlog: 0, cant_play: 0 };
+      const statusCounts = {
+        played: 0,
+        playing: 0,
+        backlog: 0,
+        cant_play: 0,
+        planning: 0,
+        completed: 0,
+        installed: 0,
+        dropped: 0,
+      };
       statusCountsGrouped.forEach((group) => {
         const status = group.status as keyof typeof statusCounts;
         if (status in statusCounts) statusCounts[status] = group._count._all;
@@ -139,6 +149,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       const topTags = await db.tag.findMany({
         take: 5,
+        where: { type: "game" },
         include: {
           _count: { select: { games: true } },
         },
@@ -198,6 +209,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const topTags = await db.tag.findMany({
       take: 5,
+      where: { type: "anime" },
       include: {
         _count: { select: { animes: true } },
       },

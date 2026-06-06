@@ -27,7 +27,7 @@ export default function NewMoviePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/tags")
+    fetch("/api/tags?type=movie")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -48,7 +48,7 @@ export default function NewMoviePage() {
       const res = await fetch("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
+        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor, type: "movie" }),
       });
       if (res.ok) {
         const tag = await res.json();

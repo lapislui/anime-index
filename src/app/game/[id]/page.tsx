@@ -46,6 +46,10 @@ const statusLabels: Record<string, { label: string; className: string }> = {
   played: { label: "Played", className: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" },
   backlog: { label: "Backlog", className: "bg-amber-500/10 text-amber-400 border border-amber-500/20" },
   cant_play: { label: "Can't Play", className: "bg-rose-500/10 text-rose-400 border border-rose-500/20" },
+  planning: { label: "Planning", className: "bg-slate-500/10 text-slate-400 border border-slate-500/20" },
+  installed: { label: "Installed", className: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" },
+  completed: { label: "Completed", className: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" },
+  dropped: { label: "Dropped", className: "bg-rose-500/10 text-rose-400 border border-rose-500/20" },
 };
 
 export default function GameDetailPage() {

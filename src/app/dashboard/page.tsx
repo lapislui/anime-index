@@ -39,6 +39,8 @@ interface StatsData {
     playing?: number;
     backlog?: number;
     cant_play?: number;
+    planning?: number;
+    installed?: number;
   };
   topTags: TagStat[];
   recentActivity: Activity[];
@@ -298,10 +300,18 @@ function DashboardPageInner() {
   const { totalAnime, totalEpisodes, statusCounts, topTags, recentActivity } = stats;
 
   // Compute percentages
-  const completedVal = mode === "games" ? (statusCounts.played || 0) : (statusCounts.completed || 0);
-  const activeVal = mode === "games" ? (statusCounts.playing || 0) : (statusCounts.watching || 0);
-  const plannedVal = mode === "games" ? (statusCounts.backlog || 0) : (statusCounts.planned || 0);
-  const droppedVal = mode === "games" ? (statusCounts.cant_play || 0) : (statusCounts.dropped || 0);
+  const completedVal = mode === "games" 
+    ? (statusCounts.played || 0) + (statusCounts.completed || 0) 
+    : (statusCounts.completed || 0);
+  const activeVal = mode === "games" 
+    ? (statusCounts.playing || 0) + (statusCounts.installed || 0) 
+    : (statusCounts.watching || 0);
+  const plannedVal = mode === "games" 
+    ? (statusCounts.backlog || 0) + (statusCounts.planning || 0) 
+    : (statusCounts.planned || 0);
+  const droppedVal = mode === "games" 
+    ? (statusCounts.cant_play || 0) + (statusCounts.dropped || 0) 
+    : (statusCounts.dropped || 0);
   
   const totalStatusCount = completedVal + activeVal + plannedVal + droppedVal || 1;
   const getPercent = (count: number) => Math.round((count / totalStatusCount) * 100);

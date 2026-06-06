@@ -23,7 +23,7 @@ export default function NewAnimePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/tags")
+    fetch("/api/tags?type=anime")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -44,7 +44,7 @@ export default function NewAnimePage() {
       const res = await fetch("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
+        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor, type: "anime" }),
       });
       if (res.ok) {
         const tag = await res.json();

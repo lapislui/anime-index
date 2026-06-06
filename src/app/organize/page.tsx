@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 interface DBTag {
@@ -163,9 +163,10 @@ export default function OrganizePage() {
   const [saving, setSaving] = useState(false);
 
   // Fetch db tags
-  const fetchTags = async () => {
+  const fetchTags = useCallback(async () => {
     try {
-      const res = await fetch("/api/tags");
+      const tagType = mode === "games" ? "game" : mode === "movies" ? "movie" : "anime";
+      const res = await fetch(`/api/tags?type=${tagType}`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -177,11 +178,11 @@ export default function OrganizePage() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [mode]);
 
   useEffect(() => {
     fetchTags();
-  }, []);
+  }, [fetchTags]);
 
   // Clear selected item on mode switch
   useEffect(() => {
@@ -202,6 +203,7 @@ export default function OrganizePage() {
         body: JSON.stringify({
           name: newTagName.trim(),
           color: newTagColor,
+          type: mode === "games" ? "game" : mode === "movies" ? "movie" : "anime",
         }),
       });
 

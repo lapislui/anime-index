@@ -27,7 +27,7 @@ export default function EditAnimePage() {
   useEffect(() => {
     Promise.all([
       fetch(`/api/animes/${params.id}`).then((r) => r.json()),
-      fetch("/api/tags").then((r) => r.json()),
+      fetch("/api/tags?type=anime").then((r) => r.json()),
     ]).then(([anime, allTags]) => {
       setTitle(anime.title);
       setDescription(anime.description || "");
@@ -44,7 +44,7 @@ export default function EditAnimePage() {
     const res = await fetch("/api/tags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
+      body: JSON.stringify({ name: newTagName.trim(), color: newTagColor, type: "anime" }),
     });
     const tag = await res.json();
     setTags([...tags, tag]);

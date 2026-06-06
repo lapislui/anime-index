@@ -81,9 +81,13 @@ export default function FilterPanel({
 
   const statusOptions = mode === "games" 
     ? [
+        { value: "planning", label: "Planning" },
         { value: "playing", label: "Playing" },
-        { value: "played", label: "Played" },
+        { value: "installed", label: "Installed" },
+        { value: "completed", label: "Completed" },
         { value: "backlog", label: "Backlog" },
+        { value: "dropped", label: "Dropped" },
+        { value: "played", label: "Played" },
         { value: "cant_play", label: "Can't Play" },
       ]
     : mode === "movies"

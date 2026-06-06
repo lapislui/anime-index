@@ -38,6 +38,8 @@ interface SharedStats {
     playing?: number;
     backlog?: number;
     cant_play?: number;
+    planning?: number;
+    installed?: number;
   };
   topTags: TagStat[];
   recentActivity: Activity[];
@@ -102,20 +104,20 @@ export default function SharedDashboardPage({
 }) {
   const { token } = use(params);
   const resolvedSearchParams = use(searchParams);
-  
+
   const [mode, setMode] = useState(resolvedSearchParams.mode || "anime");
   const [tab, setTab] = useState<"dashboard" | "library">("dashboard");
   const [stats, setStats] = useState<SharedStats | null>(null);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<ItemDetails | null>(null);
-  
+
   // Loading & Error States
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   // Follow Status
   const [followStatus, setFollowStatus] = useState<{
     loggedIn: boolean;
@@ -310,11 +312,10 @@ export default function SharedDashboardPage({
                     <button
                       onClick={toggleFollow}
                       disabled={followLoading}
-                      className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all duration-300 shadow-md border cursor-pointer ${
-                        followStatus.isFollowing
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all duration-300 shadow-md border cursor-pointer ${followStatus.isFollowing
                           ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 group"
                           : "bg-accent hover:opacity-95 text-slate-950 border-transparent font-extrabold"
-                      }`}
+                        }`}
                     >
                       {followStatus.isFollowing ? (
                         <>
@@ -365,9 +366,8 @@ export default function SharedDashboardPage({
                 <button
                   key={m.id}
                   onClick={() => handleModeChange(m.id)}
-                  className={`relative z-10 flex items-center gap-1 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
-                    mode === m.id ? "text-slate-950 font-extrabold bg-accent" : "text-muted hover:text-foreground"
-                  }`}
+                  className={`relative z-10 flex items-center gap-1 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${mode === m.id ? "text-slate-950 font-extrabold bg-accent" : "text-muted hover:text-foreground"
+                    }`}
                 >
                   {m.label}
                 </button>
@@ -381,17 +381,15 @@ export default function SharedDashboardPage({
         <div className="flex border-b border-border/40 mb-8 bg-slate-950/20 rounded-xl p-1 max-w-xs border border-border/20">
           <button
             onClick={() => setTab("dashboard")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              tab === "dashboard" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
-            }`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${tab === "dashboard" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
+              }`}
           >
             <span>📊</span> Dashboard
           </button>
           <button
             onClick={() => setTab("library")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              tab === "library" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
-            }`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${tab === "library" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
+              }`}
           >
             <span>📚</span> Library
           </button>
@@ -640,7 +638,7 @@ export default function SharedDashboardPage({
             onClick={() => setSelectedItem(null)}
           />
           <div className="relative w-full max-w-4xl max-h-[85vh] overflow-y-auto glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl border border-border/40 z-10 flex flex-col gap-6">
-            
+
             {loadingDetails ? (
               <div className="py-20 text-center text-muted flex-1 flex flex-col items-center justify-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-accent border-r-transparent align-[-0.125em]" />
@@ -667,9 +665,8 @@ export default function SharedDashboardPage({
                   <div className="flex-1 space-y-3">
                     <div className="flex flex-wrap gap-2 items-center">
                       <h2 className="text-xl font-extrabold text-foreground">{selectedItem.title}</h2>
-                      <span className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                        (statusLabels[selectedItem.status] || { className: "" }).className
-                      }`}>
+                      <span className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${(statusLabels[selectedItem.status] || { className: "" }).className
+                        }`}>
                         {(statusLabels[selectedItem.status] || { label: selectedItem.status }).label}
                       </span>
                     </div>
@@ -711,7 +708,7 @@ export default function SharedDashboardPage({
                   <h3 className="text-xs font-bold text-muted uppercase tracking-widest">
                     Detailed Journal Breakdown
                   </h3>
-                  
+
                   {/* Logs mapping */}
                   {(() => {
                     const logs = selectedItem.episodes || selectedItem.chapters || selectedItem.parts || [];
@@ -730,9 +727,9 @@ export default function SharedDashboardPage({
                                 {logUnitName} {log.number}: &ldquo;{log.title}&rdquo;
                               </h4>
                             </div>
-                            
+
                             <p className="text-xs text-muted-light leading-relaxed whitespace-pre-wrap">{log.story}</p>
-                            
+
                             {/* Media attachment gallery */}
                             {log.media && log.media.length > 0 && (
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">

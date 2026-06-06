@@ -95,7 +95,7 @@ export default function WatchPage() {
   // Fetch db tags so we can check if category/status tags exist
   const fetchDbTags = useCallback(async () => {
     try {
-      const res = await fetch("/api/tags");
+      const res = await fetch("/api/tags?type=anime");
       if (res.ok) {
         const data = await res.json();
         setDbTags(data);
@@ -239,7 +239,7 @@ export default function WatchPage() {
           const res = await fetch("/api/tags", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, color }),
+            body: JSON.stringify({ name, color, type: "anime" }),
           });
           if (res.ok) {
             const newTag = await res.json();

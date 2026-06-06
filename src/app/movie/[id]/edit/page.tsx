@@ -31,7 +31,7 @@ export default function EditMoviePage() {
   useEffect(() => {
     Promise.all([
       fetch(`/api/movies/${params.id}`).then((r) => r.json()),
-      fetch("/api/tags").then((r) => r.json()),
+      fetch("/api/tags?type=movie").then((r) => r.json()),
     ]).then(([movie, allTags]) => {
       setTitle(movie.title);
       setDescription(movie.description || "");
@@ -55,7 +55,7 @@ export default function EditMoviePage() {
       const res = await fetch("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
+        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor, type: "movie" }),
       });
       if (res.ok) {
         const tag = await res.json();

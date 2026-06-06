@@ -27,7 +27,7 @@ export default function NewGamePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/tags")
+    fetch("/api/tags?type=game")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -48,7 +48,7 @@ export default function NewGamePage() {
       const res = await fetch("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor }),
+        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor, type: "game" }),
       });
       if (res.ok) {
         const tag = await res.json();
@@ -190,10 +190,12 @@ export default function NewGamePage() {
             onChange={(e) => setStatus(e.target.value)}
             className="w-full rounded-md border border-border bg-slate-950/50 px-3 py-2 text-foreground focus:outline-none focus:border-accent cursor-pointer"
           >
+            <option value="planning">Planning</option>
             <option value="playing">Playing</option>
-            <option value="played">Played</option>
+            <option value="installed">Installed</option>
+            <option value="completed">Completed</option>
             <option value="backlog">Backlog</option>
-            <option value="cant_play">Can&apos;t Play</option>
+            <option value="dropped">Dropped</option>
           </select>
         </div>
 
