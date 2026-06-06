@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use, useMemo } from "react";
 import Link from "next/link";
+import FilterPanel from "@/components/FilterPanel";
 
 interface Tag {
   id: string;
@@ -62,6 +63,9 @@ interface LibraryItem {
   genres: string | null;
   tags: Tag[];
   _count: { episodes?: number; chapters?: number; parts?: number };
+  createdAt: string;
+  updatedAt: string;
+  playedWith?: { id: string; email: string } | null;
 }
 
 interface MediaEntry {
@@ -111,6 +115,160 @@ export default function SharedDashboardPage({
   const [stats, setStats] = useState<SharedStats | null>(null);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<ItemDetails | null>(null);
+
+  // Filter States
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [selectedFormat, setSelectedFormat] = useState<string>("");
+  const [selectedCollaborator, setSelectedCollaborator] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"updatedAt" | "title" | "createdAt">("updatedAt");
+
+  // Reset filters when switching modes or token
+  useEffect(() => {
+    setSelectedGenres([]);
+    setSelectedTags([]);
+    setSelectedYear("");
+    setSelectedStatus("");
+    setSelectedFormat("");
+    setSelectedCollaborator("");
+    setSearch("");
+  }, [mode, token]);
+
+  // Compute available filters from library items
+  const { availableGenres, availableYears, availableFormats } = useMemo(() => {
+    const genresSet = new Set<string>();
+    const yearsSet = new Set<number>();
+    const formatsSet = new Set<string>();
+
+    libraryItems.forEach((item) => {
+      if (item.genres) {
+        item.genres.split(",").forEach((g) => {
+          const trimmed = g.trim();
+          if (trimmed) genresSet.add(trimmed);
+        });
+      }
+      if (item.year) {
+        yearsSet.add(item.year);
+      }
+      if (item.format) {
+        formatsSet.add(item.format);
+      }
+    });
+
+    return {
+      availableGenres: Array.from(genresSet).sort(),
+      availableYears: Array.from(yearsSet).sort((a, b) => b - a),
+      availableFormats: Array.from(formatsSet).sort(),
+    };
+  }, [libraryItems]);
+
+  // Dynamic list of tags from library items
+  const availableTags = useMemo(() => {
+    const map = new Map<string, Tag>();
+    libraryItems.forEach((item) => {
+      item.tags.forEach((tag) => {
+        map.set(tag.id, tag);
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [libraryItems]);
+
+  // Dynamic list of friends / collaborators from games in libraryItems
+  const friendsList = useMemo(() => {
+    const map = new Map<string, string>();
+    libraryItems.forEach((item) => {
+      if (item.playedWith) {
+        map.set(item.playedWith.id, item.playedWith.email);
+      }
+    });
+    return Array.from(map.entries()).map(([id, email]) => ({
+      userId: id,
+      email,
+    }));
+  }, [libraryItems]);
+
+  // Filter & sort library items client-side
+  const filteredAndSortedItems = useMemo(() => {
+    let result = [...libraryItems];
+
+    // 1. Filter by Search
+    if (search.trim()) {
+      const query = search.toLowerCase().trim();
+      result = result.filter(
+        (item) =>
+          item.title.toLowerCase().includes(query) ||
+          (item.description && item.description.toLowerCase().includes(query))
+      );
+    }
+
+    // 2. Filter by Status
+    if (selectedStatus) {
+      result = result.filter((item) => item.status === selectedStatus);
+    }
+
+    // 3. Filter by Format/Platform
+    if (selectedFormat) {
+      result = result.filter((item) => item.format === selectedFormat);
+    }
+
+    // 4. Filter by Year
+    if (selectedYear) {
+      result = result.filter((item) => item.year?.toString() === selectedYear);
+    }
+
+    // 5. Filter by Collaborator (only for games)
+    if (mode === "games" && selectedCollaborator) {
+      if (selectedCollaborator === "any") {
+        result = result.filter((item) => !!item.playedWith);
+      } else {
+        result = result.filter((item) => item.playedWith?.id === selectedCollaborator);
+      }
+    }
+
+    // 6. Filter by Genres (multi-select)
+    if (selectedGenres.length > 0) {
+      result = result.filter((item) => {
+        if (!item.genres) return false;
+        const itemGenresList = item.genres.split(",").map((g) => g.trim().toLowerCase());
+        return selectedGenres.every((g) => itemGenresList.includes(g.toLowerCase()));
+      });
+    }
+
+    // 7. Filter by Tags (multi-select)
+    if (selectedTags.length > 0) {
+      result = result.filter((item) =>
+        selectedTags.every((t) => item.tags.some((tag) => tag.name === t))
+      );
+    }
+
+    // 8. Sort
+    result.sort((a, b) => {
+      if (sortBy === "title") {
+        return a.title.localeCompare(b.title);
+      } else if (sortBy === "createdAt") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else {
+        // Default: updatedAt
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
+    });
+
+    return result;
+  }, [
+    libraryItems,
+    search,
+    selectedStatus,
+    selectedFormat,
+    selectedYear,
+    selectedCollaborator,
+    selectedGenres,
+    selectedTags,
+    sortBy,
+    mode,
+  ]);
 
   // Loading & Error States
   const [loadingStats, setLoadingStats] = useState(true);
@@ -567,72 +725,130 @@ export default function SharedDashboardPage({
                   <p className="mt-4 text-lg font-bold text-muted">No {mode === "games" ? "game" : mode === "movies" ? "movie" : "anime"} entries shared yet.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                  {libraryItems.map((item) => {
-                    const statusInfo = statusLabels[item.status] || { label: item.status, className: "bg-slate-500/10 text-slate-400 border border-slate-500/20" };
-                    const countVal = item._count.episodes !== undefined ? item._count.episodes : item._count.chapters !== undefined ? item._count.chapters : item._count.parts || 0;
-                    const countUnit = mode === "games" ? "chapter" : mode === "movies" ? "part" : "episode";
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => openDetails(item.id)}
-                        className="block cursor-pointer group"
+                <>
+                  {/* Search and Sort Row */}
+                  <div className="mb-6 flex flex-col gap-3 md:flex-row">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
+                      <input
+                        type="text"
+                        placeholder={mode === "games" ? "Search gaming catalog..." : mode === "movies" ? "Search movie library..." : "Search anime library..."}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full rounded-xl border border-border/80 bg-slate-950/50 py-2.5 pl-10 pr-4 text-xs text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as "updatedAt" | "title" | "createdAt")}
+                        className="rounded-xl border border-border/80 bg-slate-950/50 px-4 py-2.5 text-xs text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300 cursor-pointer"
                       >
-                        <div className="glass-panel group overflow-hidden rounded-xl h-full flex flex-col border border-border/40 hover:border-accent/30 transition-all duration-300">
-                          {/* Cover Image */}
-                          <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
-                            {item.coverImage ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={item.coverImage}
-                                alt={item.title}
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex h-full items-center justify-center text-4xl text-accent/30">
-                                {mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺"}
-                              </div>
-                            )}
-                            <span
-                              className={`absolute right-2 top-2 rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider backdrop-blur-md ${statusInfo.className}`}
-                            >
-                              {statusInfo.label}
-                            </span>
-                          </div>
+                        <option value="updatedAt">Recently Updated</option>
+                        <option value="createdAt">Recently Added</option>
+                        <option value="title">Title (A-Z)</option>
+                      </select>
+                    </div>
+                  </div>
 
-                          {/* Info */}
-                          <div className="p-4 flex flex-col flex-1">
-                            <h3 className="text-xs font-bold leading-snug text-foreground line-clamp-1 group-hover:text-accent transition-colors duration-300">
-                              {item.title}
-                            </h3>
-                            {item.description && (
-                              <p className="mt-1 text-[10px] text-muted line-clamp-2 leading-relaxed flex-1">{item.description}</p>
-                            )}
-                            <p className="mt-2 text-[9px] font-bold text-accent uppercase tracking-wider">
-                              {countVal} {countUnit}{countVal !== 1 ? "s" : ""} logged
-                            </p>
-                            {item.tags.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {item.tags.slice(0, 2).map((tag) => (
-                                  <span
-                                    key={tag.id}
-                                    className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold"
-                                    style={{ backgroundColor: tag.color + "15", color: tag.color, border: `1px solid ${tag.color}30` }}
-                                  >
-                                    {tag.name}
-                                  </span>
-                                ))}
-                                {item.tags.length > 2 && (
-                                  <span className="text-[8px] text-muted self-center ml-1 font-semibold">+{item.tags.length - 2}</span>
+                  {/* Advanced Filter Panel */}
+                  <div className="mb-8">
+                    <FilterPanel
+                      mode={mode as "anime" | "games" | "movies"}
+                      tags={availableTags}
+                      availableGenres={availableGenres}
+                      availableYears={availableYears}
+                      availableFormats={availableFormats}
+                      selectedGenres={selectedGenres}
+                      setSelectedGenres={setSelectedGenres}
+                      selectedTags={selectedTags}
+                      setSelectedTags={setSelectedTags}
+                      selectedYear={selectedYear}
+                      setSelectedYear={setSelectedYear}
+                      selectedStatus={selectedStatus}
+                      setSelectedStatus={setSelectedStatus}
+                      selectedFormat={selectedFormat}
+                      setSelectedFormat={setSelectedFormat}
+                      selectedCollaborator={selectedCollaborator}
+                      setSelectedCollaborator={setSelectedCollaborator}
+                      friends={friendsList}
+                    />
+                  </div>
+
+                  {filteredAndSortedItems.length === 0 ? (
+                    <div className="glass-panel rounded-2xl py-20 text-center shadow-lg border border-border/50">
+                      <span className="text-5xl">{mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "🎌"}</span>
+                      <p className="mt-4 text-lg font-bold text-muted">No {mode === "games" ? "game" : mode === "movies" ? "movie" : "anime"} entries match your filters</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                      {filteredAndSortedItems.map((item) => {
+                        const statusInfo = statusLabels[item.status] || { label: item.status, className: "bg-slate-500/10 text-slate-400 border border-slate-500/20" };
+                        const countVal = item._count.episodes !== undefined ? item._count.episodes : item._count.chapters !== undefined ? item._count.chapters : item._count.parts || 0;
+                        const countUnit = mode === "games" ? "chapter" : mode === "movies" ? "part" : "episode";
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => openDetails(item.id)}
+                            className="block cursor-pointer group"
+                          >
+                            <div className="glass-panel group overflow-hidden rounded-xl h-full flex flex-col border border-border/40 hover:border-accent/30 transition-all duration-300">
+                              {/* Cover Image */}
+                              <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
+                                {item.coverImage ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={item.coverImage}
+                                    alt={item.title}
+                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <div className="flex h-full items-center justify-center text-4xl text-accent/30">
+                                    {mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺"}
+                                  </div>
+                                )}
+                                <span
+                                  className={`absolute right-2 top-2 rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider backdrop-blur-md ${statusInfo.className}`}
+                                >
+                                  {statusInfo.label}
+                                </span>
+                              </div>
+
+                              {/* Info */}
+                              <div className="p-4 flex flex-col flex-1">
+                                <h3 className="text-xs font-bold leading-snug text-foreground line-clamp-1 group-hover:text-accent transition-colors duration-300">
+                                  {item.title}
+                                </h3>
+                                {item.description && (
+                                  <p className="mt-1 text-[10px] text-muted line-clamp-2 leading-relaxed flex-1">{item.description}</p>
+                                )}
+                                <p className="mt-2 text-[9px] font-bold text-accent uppercase tracking-wider">
+                                  {countVal} {countUnit}{countVal !== 1 ? "s" : ""} logged
+                                </p>
+                                {item.tags.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {item.tags.slice(0, 2).map((tag) => (
+                                      <span
+                                        key={tag.id}
+                                        className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold"
+                                        style={{ backgroundColor: tag.color + "15", color: tag.color, border: `1px solid ${tag.color}30` }}
+                                      >
+                                        {tag.name}
+                                      </span>
+                                    ))}
+                                    {item.tags.length > 2 && (
+                                      <span className="text-[8px] text-muted self-center ml-1 font-semibold">+{item.tags.length - 2}</span>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
