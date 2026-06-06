@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       microsoftConnected: !!user.microsoftId,
       discordConnected: !!user.discordId,
       facebookConnected: !!user.facebookId,
+      hasPassword: user.hasPassword,
     }
   });
 }

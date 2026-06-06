@@ -12,6 +12,7 @@ export interface SessionUser {
   microsoftId?: string | null;
   discordId?: string | null;
   facebookId?: string | null;
+  hasPassword: boolean;
 }
 
 // Get the current user based on session token in cookies
@@ -34,6 +35,7 @@ export async function getCurrentUser(request: NextRequest): Promise<SessionUser 
             microsoftId: true,
             discordId: true,
             facebookId: true,
+            passwordHash: true,
           },
         },
       },
@@ -43,7 +45,11 @@ export async function getCurrentUser(request: NextRequest): Promise<SessionUser 
       return null;
     }
 
-    return session.user;
+    const { passwordHash, ...userWithoutHash } = session.user;
+    return {
+      ...userWithoutHash,
+      hasPassword: !!passwordHash,
+    };
   } catch (error) {
     console.error("Error getting current user: ", error);
     return null;

@@ -161,6 +161,13 @@ export default function Navbar() {
                   <div className="px-3 py-2 text-xs text-muted border-b border-border/40 truncate">
                     {user.email}
                   </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-white/5 transition-colors"
+                  >
+                    <span>⚙️</span> Profile Settings
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors"
