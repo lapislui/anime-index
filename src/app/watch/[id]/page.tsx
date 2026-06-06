@@ -38,10 +38,14 @@ export default function WatchPage() {
   const [error, setError] = useState("");
 
   const [currentEpisode, setCurrentEpisode] = useState(1);
-  const [currentServer, setCurrentServer] = useState(1);
+  const [activeServer, setActiveServer] = useState("vidsrc");
   const [watchlistStatus, setWatchlistStatus] = useState("watching");
   const [dbTags, setDbTags] = useState<DBTag[]>([]);
   const [savingToWatchlist, setSavingToWatchlist] = useState(false);
+
+  // Streaming mappings states
+  const [malsyncSites, setMalsyncSites] = useState<any>({});
+  const [anikotoEpisodes, setAnikotoEpisodes] = useState<any[]>([]);
 
   const fetchAnimeDetails = useCallback(async () => {
     setLoading(true);
@@ -58,6 +62,26 @@ export default function WatchPage() {
       setError(errMsg);
     } finally {
       setLoading(false);
+    }
+  }, [animeId]);
+
+  const fetchStreamingMappings = useCallback(async () => {
+    try {
+      // 1. Fetch MAL-Sync mappings
+      const msRes = await fetch(`/api/streaming/malsync?malId=${animeId}`);
+      if (msRes.ok) {
+        const msData = await msRes.json();
+        setMalsyncSites(msData.Sites || {});
+      }
+
+      // 2. Fetch Anikoto episodes
+      const akRes = await fetch(`/api/streaming/anikoto?malId=${animeId}`);
+      if (akRes.ok) {
+        const akData = await akRes.json();
+        setAnikotoEpisodes(akData.episodes || (akData.series && akData.series.episodes) || []);
+      }
+    } catch (err) {
+      console.error("Error loading streaming mappings:", err);
     }
   }, [animeId]);
 
@@ -78,8 +102,28 @@ export default function WatchPage() {
     if (animeId) {
       fetchAnimeDetails();
       fetchDbTags();
+      fetchStreamingMappings();
     }
-  }, [animeId, fetchAnimeDetails]);
+  }, [animeId, fetchAnimeDetails, fetchDbTags, fetchStreamingMappings]);
+
+  // Auto-set the best server once mappings are fetched
+  useEffect(() => {
+    if (anikotoEpisodes.length > 0) {
+      const hasEp = anikotoEpisodes.find((ep: any) => ep.number === currentEpisode || ep.episode_number === currentEpisode);
+      if (hasEp) {
+        setActiveServer("anikoto");
+        return;
+      }
+    }
+    if (malsyncSites.animepahe && Object.keys(malsyncSites.animepahe).length > 0) {
+      setActiveServer("animepahe");
+      return;
+    }
+    if ((malsyncSites.gogoanime && Object.keys(malsyncSites.gogoanime).length > 0) || (malsyncSites.Gogoanime && Object.keys(malsyncSites.Gogoanime).length > 0)) {
+      setActiveServer("animembed");
+      return;
+    }
+  }, [malsyncSites, anikotoEpisodes, currentEpisode]);
 
   if (loading) {
     return (
@@ -108,25 +152,66 @@ export default function WatchPage() {
   const isMovie = anime.type === "Movie";
   const totalEpisodes = anime.episodes || 1;
 
-  // Determine standard embed URLs based on server index and current episode
-  let embedUrl = "";
-  if (isMovie) {
-    if (currentServer === 1) {
-      embedUrl = `https://dropfile.cc/player/movie/mal-${animeId}/1?audio=sub&lang=en`;
-    } else if (currentServer === 2) {
-      embedUrl = `https://vidsrc.me/embed/anime?mal=${animeId}`;
-    } else {
-      embedUrl = `https://embed.su/embed/anime/${animeId}/1`;
+  // Servers configuration
+  const servers = [
+    {
+      id: "anikoto",
+      name: "Megaplay (Anikoto)",
+      available: anikotoEpisodes.length > 0 && !!anikotoEpisodes.find((ep: any) => ep.number === currentEpisode || ep.episode_number === currentEpisode),
+      getUrl: () => {
+        const ep = anikotoEpisodes.find((ep: any) => ep.number === currentEpisode || ep.episode_number === currentEpisode);
+        const embedId = ep?.episode_embed_id || ep?.embedId || ep?.id;
+        return `https://megaplay.buzz/stream/s-2/${embedId}`;
+      }
+    },
+    {
+      id: "animepahe",
+      name: "AnimePahe (MAL-Sync)",
+      available: malsyncSites.animepahe && Object.values(malsyncSites.animepahe).length > 0,
+      getUrl: () => {
+        const pObj = Object.values(malsyncSites.animepahe)[0] as any;
+        const pId = pObj?.identifier || pObj?.id;
+        return `https://animepahe.com/play/${pId}/${currentEpisode}`;
+      }
+    },
+    {
+      id: "animembed",
+      name: "AnimEmbed (Gogoanime)",
+      available: (malsyncSites.gogoanime && Object.values(malsyncSites.gogoanime).length > 0) || (malsyncSites.Gogoanime && Object.values(malsyncSites.Gogoanime).length > 0),
+      getUrl: () => {
+        const gObj = (malsyncSites.gogoanime ? Object.values(malsyncSites.gogoanime)[0] : Object.values(malsyncSites.Gogoanime)[0]) as any;
+        const gId = gObj?.identifier || gObj?.id;
+        return `https://animembed.cc/embed/${gId}-episode-${currentEpisode}`;
+      }
+    },
+    {
+      id: "dropfile",
+      name: "Dropfile (Direct)",
+      available: true,
+      getUrl: () => isMovie
+        ? `https://dropfile.cc/player/movie/mal-${animeId}/1?audio=sub&lang=en`
+        : `https://dropfile.cc/player/tv/mal-${animeId}/${currentEpisode}/1?audio=sub&lang=en`
+    },
+    {
+      id: "vidsrc",
+      name: "Vidsrc (Direct)",
+      available: true,
+      getUrl: () => isMovie
+        ? `https://vidsrc.me/embed/anime?mal=${animeId}`
+        : `https://vidsrc.me/embed/anime?mal=${animeId}&episode=${currentEpisode}`
+    },
+    {
+      id: "embedsu",
+      name: "Embed.su (Direct)",
+      available: true,
+      getUrl: () => isMovie
+        ? `https://embed.su/embed/anime/${animeId}/1`
+        : `https://embed.su/embed/anime/${animeId}/${currentEpisode}`
     }
-  } else {
-    if (currentServer === 1) {
-      embedUrl = `https://dropfile.cc/player/tv/mal-${animeId}/${currentEpisode}/1?audio=sub&lang=en`;
-    } else if (currentServer === 2) {
-      embedUrl = `https://vidsrc.me/embed/anime?mal=${animeId}&episode=${currentEpisode}`;
-    } else {
-      embedUrl = `https://embed.su/embed/anime/${animeId}/${currentEpisode}`;
-    }
-  }
+  ];
+
+  const activeServerObj = servers.find((s) => s.id === activeServer && s.available) || servers.find((s) => s.id === "vidsrc");
+  const embedUrl = activeServerObj ? activeServerObj.getUrl() : "";
 
   const saveToDatabase = async () => {
     setSavingToWatchlist(true);
@@ -204,17 +289,17 @@ export default function WatchPage() {
           <div className="glass-panel flex flex-col justify-between gap-4 rounded-xl p-4 sm:flex-row sm:items-center shadow-lg">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-muted mr-2">Servers:</span>
-              {[1, 2, 3].map((serverNum) => (
+              {servers.filter(s => s.available).map((s) => (
                 <button
-                  key={serverNum}
-                  onClick={() => setCurrentServer(serverNum)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all border ${
-                    currentServer === serverNum
+                  key={s.id}
+                  onClick={() => setActiveServer(s.id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${
+                    activeServer === s.id
                       ? "bg-accent/15 border-accent text-accent"
                       : "bg-slate-900/50 border-border/60 text-muted hover:text-foreground"
                   }`}
                 >
-                  Server {serverNum}
+                  {s.name}
                 </button>
               ))}
             </div>
