@@ -20,15 +20,24 @@ interface SharedStats {
   ownerEmail: string;
   totalAnime: number;
   totalEpisodes: number;
-  statusCounts: { watching: number; completed: number; planned: number; dropped: number };
+  statusCounts: {
+    watching?: number;
+    completed?: number;
+    planned?: number;
+    dropped?: number;
+    played?: number;
+    playing?: number;
+    backlog?: number;
+    cant_play?: number;
+  };
   topTags: TagStat[];
   recentActivity: Activity[];
 }
 
-async function getSharedStats(token: string): Promise<SharedStats | null> {
+async function getSharedStats(token: string, mode: string): Promise<SharedStats | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_ORIGIN ?? "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/stats/shared/${token}`, {
+    const res = await fetch(`${baseUrl}/api/stats/shared/${token}?mode=${mode}`, {
       cache: "no-store",
     });
     if (!res.ok) return null;
@@ -40,17 +49,25 @@ async function getSharedStats(token: string): Promise<SharedStats | null> {
 
 export default async function SharedDashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ mode?: string }>;
 }) {
   const { token } = await params;
-  const stats = await getSharedStats(token);
+  const { mode = "anime" } = await searchParams;
+  const stats = await getSharedStats(token, mode);
 
   if (!stats) notFound();
 
   const { ownerEmail, totalAnime, totalEpisodes, statusCounts, topTags, recentActivity } = stats;
-  const totalStatusCount =
-    statusCounts.watching + statusCounts.completed + statusCounts.planned + statusCounts.dropped || 1;
+
+  const completedVal = mode === "games" ? (statusCounts.played || 0) : (statusCounts.completed || 0);
+  const activeVal = mode === "games" ? (statusCounts.playing || 0) : (statusCounts.watching || 0);
+  const plannedVal = mode === "games" ? (statusCounts.backlog || 0) : (statusCounts.planned || 0);
+  const droppedVal = mode === "games" ? (statusCounts.cant_play || 0) : (statusCounts.dropped || 0);
+
+  const totalStatusCount = completedVal + activeVal + plannedVal + droppedVal || 1;
   const getPercent = (count: number) => Math.round((count / totalStatusCount) * 100);
 
   return (
@@ -61,10 +78,10 @@ export default async function SharedDashboardPage({
           Shared Library
         </span>
         <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-          {ownerEmail.split("@")[0]}&apos;s Anime Metrics
+          {ownerEmail.split("@")[0]}&apos;s {mode === "games" ? "Game" : mode === "movies" ? "Movie" : "Anime"} Metrics
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted">
-          Publicly shared anime library stats from{" "}
+          Publicly shared {mode === "games" ? "game" : mode === "movies" ? "movie" : "anime"} library stats from{" "}
           <span className="text-foreground font-semibold">{ownerEmail}</span>.
         </p>
         <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-slate-950/40 border border-border/30 px-3 py-1.5 text-xs text-muted">
@@ -76,10 +93,10 @@ export default async function SharedDashboardPage({
       {/* Metric Cards */}
       <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Series", val: totalAnime, icon: "📺", grad: "from-blue-600/10 to-blue-400/5" },
-          { label: "Episodes Logged", val: totalEpisodes, icon: "📝", grad: "from-emerald-600/10 to-emerald-400/5" },
-          { label: "Completed", val: statusCounts.completed, icon: "🏆", grad: "from-amber-600/10 to-amber-400/5" },
-          { label: "In Progress", val: statusCounts.watching, icon: "⏳", grad: "from-purple-600/10 to-purple-400/5" },
+          { label: mode === "games" ? "Total Games" : mode === "movies" ? "Total Movies" : "Total Series", val: totalAnime, icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺", grad: "from-blue-600/10 to-blue-400/5" },
+          { label: mode === "games" ? "Chapters Logged" : mode === "movies" ? "Parts Logged" : "Episodes Logged", val: totalEpisodes, icon: "📝", grad: "from-emerald-600/10 to-emerald-400/5" },
+          { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, icon: "🏆", grad: "from-amber-600/10 to-amber-400/5" },
+          { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "In Progress", val: activeVal, icon: "⏳", grad: "from-purple-600/10 to-purple-400/5" },
         ].map((c, i) => (
           <div
             key={i}
@@ -102,14 +119,14 @@ export default async function SharedDashboardPage({
           <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-6">
             <div>
               <h3 className="text-base font-bold text-foreground">Status Distribution</h3>
-              <p className="text-xs text-muted">Ratios based on total series added to library</p>
+              <p className="text-xs text-muted">Ratios based on total items added to library</p>
             </div>
             <div className="space-y-4">
               {[
-                { label: "Completed", val: statusCounts.completed, color: "bg-amber-400" },
-                { label: "Watching", val: statusCounts.watching, color: "bg-purple-400" },
-                { label: "Planned", val: statusCounts.planned, color: "bg-blue-400" },
-                { label: "Dropped", val: statusCounts.dropped, color: "bg-rose-400" },
+                { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, color: "bg-amber-400" },
+                { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "Watching", val: activeVal, color: "bg-purple-400" },
+                { label: mode === "games" ? "Backlog" : mode === "movies" ? "Plan to Watch" : "Planned", val: plannedVal, color: "bg-blue-400" },
+                { label: mode === "games" ? "Can't Play" : mode === "movies" ? "Dropped" : "Dropped", val: droppedVal, color: "bg-rose-400" },
               ].map((s, idx) => {
                 const pct = getPercent(s.val);
                 return (
@@ -143,7 +160,7 @@ export default async function SharedDashboardPage({
                       <span className="text-xs font-bold text-foreground">{tag.name}</span>
                     </div>
                     <span className="text-xs font-semibold bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-muted">
-                      {tag._count.animes} series
+                      {tag._count.animes} {tag._count.animes === 1 ? "entry" : "entries"}
                     </span>
                   </div>
                 ))}
@@ -157,12 +174,12 @@ export default async function SharedDashboardPage({
           <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-5 sticky top-[100px]">
             <div>
               <h3 className="text-base font-bold text-foreground">Recent Activity Feed</h3>
-              <p className="text-xs text-muted">Latest episode breakdown updates</p>
+              <p className="text-xs text-muted">Latest breakdowns logged</p>
             </div>
             {recentActivity.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
                 <span className="text-4xl mb-3">✍️</span>
-                <p className="text-xs">No episode breakdowns cataloged yet.</p>
+                <p className="text-xs">No entries cataloged yet.</p>
               </div>
             ) : (
               <div className="relative border-l border-border/30 pl-4 space-y-6">
@@ -177,10 +194,10 @@ export default async function SharedDashboardPage({
                       })}
                     </p>
                     <h4 className="text-xs font-bold text-foreground leading-snug">
-                      Logged Episode {activity.number}: &ldquo;{activity.title}&rdquo;
+                      Logged {mode === "games" ? "Chapter" : mode === "movies" ? "Part" : "Episode"} {activity.number}: &ldquo;{activity.title}&rdquo;
                     </h4>
                     <p className="text-[10px] text-muted leading-relaxed">
-                      Series: <span className="text-foreground font-semibold">{activity.anime.title}</span>
+                      {mode === "games" ? "Game" : mode === "movies" ? "Movie" : "Series"}: <span className="text-foreground font-semibold">{activity.anime.title}</span>
                     </p>
                   </div>
                 ))}
@@ -192,12 +209,12 @@ export default async function SharedDashboardPage({
 
       {/* Footer CTA */}
       <div className="mt-12 text-center">
-        <p className="text-xs text-muted">Want to track your own anime library?</p>
+        <p className="text-xs text-muted">Want to track your own library?</p>
         <Link
           href="/login"
           className="mt-3 inline-block glow-btn rounded-xl px-6 py-2.5 text-sm font-bold"
         >
-          Create Your Anime Index →
+          Create Your Story Index →
         </Link>
       </div>
     </div>

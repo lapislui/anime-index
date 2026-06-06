@@ -19,6 +19,8 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   animes         Anime[]
+  games          Game[]
+  movies         Movie[]
   passkeys       Passkey[]
   sessions       Session[]
   shareDashboard Boolean   @default(false)
@@ -48,6 +50,9 @@ model Anime {
   description String?
   coverImage  String?
   status      String    @default("watching") // watching, completed, dropped, planned
+  year        Int?
+  format      String?
+  genres      String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   episodes    Episode[]
@@ -86,4 +91,91 @@ model Tag {
   name   String  @unique
   color  String  @default("#6366f1") // Default indigo color
   animes Anime[] @relation("AnimeToTag")
+  games  Game[]  @relation("GameToTag")
+  movies Movie[] @relation("MovieToTag")
 }
+
+model Game {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  coverImage  String?
+  status      String    @default("playing") // played, playing, backlog, cant_play
+  year        Int?
+  format      String?   // Platform / Format (e.g. PC, PS5, Xbox, Switch, Mobile)
+  genres      String?   // Comma-separated genres
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags        Tag[]     @relation("GameToTag")
+  chapters    Chapter[]
+}
+
+model Chapter {
+  id        String      @id @default(cuid())
+  number    Int
+  title     String
+  story     String      // Full story breakdown text
+  gameId    String
+  game      Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  media     GameMedia[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([gameId, number])
+}
+
+model GameMedia {
+  id        String   @id @default(cuid())
+  url       String
+  type      String   // "image" or "clip"
+  caption   String?
+  order     Int      @default(0)
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Movie {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  coverImage  String?
+  status      String      @default("watching") // watching, completed, dropped, planned
+  year        Int?
+  format      String?
+  genres      String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  tags        Tag[]       @relation("MovieToTag")
+  parts       MoviePart[]
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MoviePart {
+  id        String       @id @default(cuid())
+  number    Int
+  title     String
+  story     String       // Full story breakdown text
+  movieId   String
+  movie     Movie        @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  media     MovieMedia[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([movieId, number])
+}
+
+model MovieMedia {
+  id          String    @id @default(cuid())
+  url         String
+  type        String    // "image" or "clip"
+  caption     String?
+  order       Int       @default(0)
+  moviePartId String
+  moviePart   MoviePart @relation(fields: [moviePartId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+}
+

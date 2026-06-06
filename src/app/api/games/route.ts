@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const order = searchParams.get("order") || "desc";
     const search = searchParams.get("search");
 
-    const where: Prisma.AnimeWhereInput = { userId: user.id };
+    const where: Prisma.GameWhereInput = { userId: user.id };
 
     if (status) where.status = status;
     if (format) where.format = format;
@@ -52,18 +52,18 @@ export async function GET(request: NextRequest) {
       orderBy.updatedAt = orderParam;
     }
 
-    const animes = await db.anime.findMany({
+    const games = await db.game.findMany({
       where,
       orderBy,
       include: {
         tags: true,
         _count: {
-          select: { episodes: true },
+          select: { chapters: true },
         },
       },
     });
 
-    return NextResponse.json(animes);
+    return NextResponse.json(games);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
     const tagConnections =
       tagIds && Array.isArray(tagIds) ? tagIds.map((id: string) => ({ id })) : [];
 
-    const anime = await db.anime.create({
+    const game = await db.game.create({
       data: {
         title,
         description,
         coverImage,
-        status: status || "watching",
+        status: status || "playing",
         year: year ? parseInt(year, 10) : null,
         format,
         genres,
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       include: { tags: true },
     });
 
-    return NextResponse.json(anime, { status: 201 });
+    return NextResponse.json(game, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

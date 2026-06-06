@@ -13,11 +13,11 @@ export async function GET(
     }
 
     const { id } = await params;
-    const anime = await db.anime.findFirst({
+    const movie = await db.movie.findFirst({
       where: { id, userId: user.id },
       include: {
         tags: true,
-        episodes: {
+        parts: {
           orderBy: { number: "asc" },
           include: {
             media: { orderBy: { order: "asc" } },
@@ -26,11 +26,11 @@ export async function GET(
       },
     });
 
-    if (!anime) {
-      return NextResponse.json({ error: "Anime not found" }, { status: 404 });
+    if (!movie) {
+      return NextResponse.json({ error: "Movie not found" }, { status: 404 });
     }
 
-    return NextResponse.json(anime);
+    return NextResponse.json(movie);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -51,16 +51,16 @@ export async function PUT(
     const body = await request.json();
     const { title, description, coverImage, status, year, format, genres, tagIds } = body;
 
-    // Ensure the anime belongs to the current user
-    const existing = await db.anime.findFirst({ where: { id, userId: user.id } });
+    // Ensure the movie belongs to the current user
+    const existing = await db.movie.findFirst({ where: { id, userId: user.id } });
     if (!existing) {
-      return NextResponse.json({ error: "Anime not found" }, { status: 404 });
+      return NextResponse.json({ error: "Movie not found" }, { status: 404 });
     }
 
     const tagConnections =
       tagIds && Array.isArray(tagIds) ? tagIds.map((id: string) => ({ id })) : [];
 
-    const anime = await db.anime.update({
+    const movie = await db.movie.update({
       where: { id },
       data: {
         title,
@@ -75,7 +75,7 @@ export async function PUT(
       include: { tags: true },
     });
 
-    return NextResponse.json(anime);
+    return NextResponse.json(movie);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -94,13 +94,13 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Ensure the anime belongs to the current user
-    const existing = await db.anime.findFirst({ where: { id, userId: user.id } });
+    // Ensure the movie belongs to the current user
+    const existing = await db.movie.findFirst({ where: { id, userId: user.id } });
     if (!existing) {
-      return NextResponse.json({ error: "Anime not found" }, { status: 404 });
+      return NextResponse.json({ error: "Movie not found" }, { status: 404 });
     }
 
-    await db.anime.delete({ where: { id } });
+    await db.movie.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

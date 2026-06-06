@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
+import { ModeProvider } from "@/context/ModeContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,10 +30,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
         suppressHydrationWarning
       >
-        <Navbar />
-        <main className="flex-1 w-full">
-          {children}
-        </main>
+        <ModeProvider>
+          <Navbar />
+          <main className="flex-1 w-full">
+            {children}
+          </main>
+        </ModeProvider>
         <footer className="border-t border-border bg-slate-950/40 py-6 text-center text-xs text-muted">
           <p>&copy; {new Date().getFullYear()} ANIMEVERSE. Created with premium aesthetics. Powered by Jikan API.</p>
         </footer>
@@ -40,4 +43,5 @@ export default function RootLayout({
     </html>
   );
 }
+
 

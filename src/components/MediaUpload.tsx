@@ -3,11 +3,13 @@
 import { useState, useRef } from "react";
 
 interface MediaUploadProps {
-  episodeId: string;
+  episodeId?: string;
+  chapterId?: string;
+  moviePartId?: string;
   onUploaded: () => void;
 }
 
-export default function MediaUpload({ episodeId, onUploaded }: MediaUploadProps) {
+export default function MediaUpload({ episodeId, chapterId, moviePartId, onUploaded }: MediaUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [type, setType] = useState<"image" | "clip">("image");
   const [caption, setCaption] = useState("");
@@ -20,7 +22,9 @@ export default function MediaUpload({ episodeId, onUploaded }: MediaUploadProps)
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("episodeId", episodeId);
+    if (episodeId) formData.append("episodeId", episodeId);
+    if (chapterId) formData.append("chapterId", chapterId);
+    if (moviePartId) formData.append("moviePartId", moviePartId);
     formData.append("type", type);
     if (caption) formData.append("caption", caption);
 

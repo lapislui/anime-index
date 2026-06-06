@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
+import { useMode } from "@/context/ModeContext";
+
 interface TagStat {
   id: string;
   name: string;
@@ -27,10 +29,14 @@ interface StatsData {
   totalAnime: number;
   totalEpisodes: number;
   statusCounts: {
-    watching: number;
-    completed: number;
-    planned: number;
-    dropped: number;
+    watching?: number;
+    completed?: number;
+    planned?: number;
+    dropped?: number;
+    played?: number;
+    playing?: number;
+    backlog?: number;
+    cant_play?: number;
   };
   topTags: TagStat[];
   recentActivity: Activity[];
@@ -39,6 +45,8 @@ interface StatsData {
 }
 
 export default function DashboardPage() {
+  const { mode } = useMode();
+  
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,7 +54,8 @@ export default function DashboardPage() {
   const [copySuccess, setCopySuccess] = useState(false);
 
   const loadStats = useCallback(() => {
-    fetch("/api/stats")
+    setLoading(true);
+    fetch(`/api/stats?mode=${mode}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load dashboard metrics");
         return res.json();
@@ -60,7 +69,7 @@ export default function DashboardPage() {
         setError("Error loading metrics. Please verify database connection.");
         setLoading(false);
       });
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     loadStats();
@@ -85,7 +94,7 @@ export default function DashboardPage() {
 
   function copyShareLink() {
     if (!stats?.shareToken) return;
-    const url = `${window.location.origin}/shared/${stats.shareToken}`;
+    const url = `${window.location.origin}/shared/${stats.shareToken}?mode=${mode}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
@@ -121,9 +130,12 @@ export default function DashboardPage() {
   const { totalAnime, totalEpisodes, statusCounts, topTags, recentActivity } = stats;
 
   // Compute percentages
-  const totalStatusCount =
-    statusCounts.watching + statusCounts.completed + statusCounts.planned + statusCounts.dropped || 1;
-
+  const completedVal = mode === "games" ? (statusCounts.played || 0) : (statusCounts.completed || 0);
+  const activeVal = mode === "games" ? (statusCounts.playing || 0) : (statusCounts.watching || 0);
+  const plannedVal = mode === "games" ? (statusCounts.backlog || 0) : (statusCounts.planned || 0);
+  const droppedVal = mode === "games" ? (statusCounts.cant_play || 0) : (statusCounts.dropped || 0);
+  
+  const totalStatusCount = completedVal + activeVal + plannedVal + droppedVal || 1;
   const getPercent = (count: number) => Math.round((count / totalStatusCount) * 100);
 
   return (
@@ -134,20 +146,24 @@ export default function DashboardPage() {
           Library Intelligence
         </span>
         <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-          Personal Anime Metrics
+          {mode === "games" ? "Personal Game Metrics" : mode === "movies" ? "Personal Movie Metrics" : "Personal Anime Metrics"}
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted">
-          Analyze watch status distributions, episode journaling volume, and custom tag preferences from your database.
+          {mode === "games"
+            ? "Analyze gameplay statuses, journal chapter logs, and custom tag preferences from your database."
+            : mode === "movies"
+            ? "Analyze watched status distributions, movie parts volume, and custom tag preferences from your database."
+            : "Analyze watch status distributions, episode journaling volume, and custom tag preferences from your database."}
         </p>
       </div>
 
       {/* Grid: 4 Metric Cards */}
       <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Series", val: totalAnime, icon: "📺", grad: "from-blue-600/10 to-blue-400/5" },
-          { label: "Episodes Logged", val: totalEpisodes, icon: "📝", grad: "from-emerald-600/10 to-emerald-400/5" },
-          { label: "Completed", val: statusCounts.completed, icon: "🏆", grad: "from-amber-600/10 to-amber-400/5" },
-          { label: "In Progress", val: statusCounts.watching, icon: "⏳", grad: "from-purple-600/10 to-purple-400/5" },
+          { label: mode === "games" ? "Total Games" : mode === "movies" ? "Total Movies" : "Total Series", val: totalAnime, icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺", grad: "from-blue-600/10 to-blue-400/5" },
+          { label: mode === "games" ? "Chapters Logged" : mode === "movies" ? "Parts Logged" : "Episodes Logged", val: totalEpisodes, icon: "📝", grad: "from-emerald-600/10 to-emerald-400/5" },
+          { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, icon: "🏆", grad: "from-amber-600/10 to-amber-400/5" },
+          { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "In Progress", val: activeVal, icon: "⏳", grad: "from-purple-600/10 to-purple-400/5" },
         ].map((c, i) => (
           <div
             key={i}
@@ -171,15 +187,15 @@ export default function DashboardPage() {
           <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-6">
             <div>
               <h3 className="text-base font-bold text-foreground">Status Distribution</h3>
-              <p className="text-xs text-muted">Ratios based on total series added to library</p>
+              <p className="text-xs text-muted">Ratios based on total items added to library</p>
             </div>
 
             <div className="space-y-4">
               {[
-                { label: "Completed", val: statusCounts.completed, color: "bg-amber-400", border: "border-amber-400/20" },
-                { label: "Watching", val: statusCounts.watching, color: "bg-purple-400", border: "border-purple-400/20" },
-                { label: "Planned", val: statusCounts.planned, color: "bg-blue-400", border: "border-blue-400/20" },
-                { label: "Dropped", val: statusCounts.dropped, color: "bg-rose-400", border: "border-rose-400/20" },
+                { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, color: "bg-cyan-400" },
+                { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "Watching", val: activeVal, color: "bg-emerald-400" },
+                { label: mode === "games" ? "Backlog" : mode === "movies" ? "Plan to Watch" : "Planned", val: plannedVal, color: "bg-amber-400" },
+                { label: mode === "games" ? "Can't Play" : mode === "movies" ? "Dropped" : "Dropped", val: droppedVal, color: "bg-rose-400" },
               ].map((s, idx) => {
                 const pct = getPercent(s.val);
                 return (
@@ -221,7 +237,7 @@ export default function DashboardPage() {
                       <span className="text-xs font-bold text-foreground">{tag.name}</span>
                     </div>
                     <span className="text-xs font-semibold bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-muted">
-                      {tag._count.animes} {tag._count.animes === 1 ? "series" : "series"}
+                      {tag._count.animes} {tag._count.animes === 1 ? "entry" : "entries"}
                     </span>
                   </div>
                 ))}
@@ -241,12 +257,12 @@ export default function DashboardPage() {
             {recentActivity.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
                 <span className="text-4xl mb-3">✍️</span>
-                <p className="text-xs">No episode breakdown journals cataloged yet.</p>
+                <p className="text-xs">No journaling log cataloged yet.</p>
                 <Link
                   href="/organize"
                   className="text-xs mt-3 text-accent hover:underline font-semibold"
                 >
-                  Import series & start journaling
+                  Import entries & start journaling
                 </Link>
               </div>
             ) : (
@@ -262,19 +278,25 @@ export default function DashboardPage() {
                       })}
                     </p>
                     <h4 className="text-xs font-bold text-foreground leading-snug">
-                      Logged Episode {activity.number}: &ldquo;{activity.title}&rdquo;
+                      Logged {mode === "games" ? "Chapter" : mode === "movies" ? "Part" : "Episode"} {activity.number}: &ldquo;{activity.title}&rdquo;
                     </h4>
                     <p className="text-[10px] text-muted-light leading-relaxed">
-                      Series:{" "}
+                      Entry:{" "}
                       <Link
-                        href={`/anime/${activity.anime.id}`}
+                        href={mode === "games" ? `/game/${activity.anime.id}` : mode === "movies" ? `/movie/${activity.anime.id}` : `/anime/${activity.anime.id}`}
                         className="text-accent hover:underline font-semibold"
                       >
                         {activity.anime.title}
                       </Link>
                     </p>
                     <Link
-                      href={`/anime/${activity.anime.id}/episode/${activity.id}`}
+                      href={
+                        mode === "games" 
+                          ? `/game/${activity.anime.id}/chapter/${activity.id}`
+                          : mode === "movies"
+                          ? `/movie/${activity.anime.id}/part/${activity.id}`
+                          : `/anime/${activity.anime.id}/episode/${activity.id}`
+                      }
                       className="inline-block text-[10px] font-bold text-accent hover:text-accent-light underline transition-colors pt-1"
                     >
                       View breakdown &rarr;
@@ -317,7 +339,7 @@ export default function DashboardPage() {
         {stats?.shareDashboard && (
           <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="flex-1 rounded-xl bg-slate-950/60 border border-border/40 px-4 py-2.5 text-xs font-mono text-muted truncate select-all">
-              {typeof window !== "undefined" ? `${window.location.origin}/shared/${stats.shareToken}` : `/shared/${stats?.shareToken}`}
+              {typeof window !== "undefined" ? `${window.location.origin}/shared/${stats.shareToken}?mode=${mode}` : `/shared/${stats?.shareToken}?mode=${mode}`}
             </div>
             <button
               id="copy-share-link"

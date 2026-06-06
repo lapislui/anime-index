@@ -8,12 +8,14 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const episodeId = formData.get("episodeId") as string | null;
+    const chapterId = formData.get("chapterId") as string | null;
+    const moviePartId = formData.get("moviePartId") as string | null;
     const type = formData.get("type") as string | null; // "image" or "clip"
     const caption = formData.get("caption") as string | null;
 
-    if (!file || !episodeId || !type) {
+    if (!file || (!episodeId && !chapterId && !moviePartId) || !type) {
       return NextResponse.json(
-        { error: "file, episodeId, and type are required" },
+        { error: "file, type, and either episodeId, chapterId, or moviePartId are required" },
         { status: 400 }
       );
     }
@@ -34,31 +36,85 @@ export async function POST(request: NextRequest) {
 
     const url = `/uploads/${type === "clip" ? "clips" : "images"}/${filename}`;
 
-    // Get the current max order for this episode's media
-    let order = 0;
-    try {
-      const lastMedia = await db.media.findFirst({
-        where: { episodeId },
-        orderBy: { order: "desc" },
-      });
-      if (lastMedia) {
-        order = lastMedia.order + 1;
+    if (chapterId) {
+      // Game Chapter Media
+      let order = 0;
+      try {
+        const lastMedia = await db.gameMedia.findFirst({
+          where: { chapterId },
+          orderBy: { order: "desc" },
+        });
+        if (lastMedia) {
+          order = lastMedia.order + 1;
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
+
+      const media = await db.gameMedia.create({
+        data: {
+          url,
+          type,
+          caption,
+          order,
+          chapterId,
+        },
+      });
+
+      return NextResponse.json(media, { status: 201 });
+    } else if (moviePartId) {
+      // Movie Part Media
+      let order = 0;
+      try {
+        const lastMedia = await db.movieMedia.findFirst({
+          where: { moviePartId },
+          orderBy: { order: "desc" },
+        });
+        if (lastMedia) {
+          order = lastMedia.order + 1;
+        }
+      } catch {
+        // ignore
+      }
+
+      const media = await db.movieMedia.create({
+        data: {
+          url,
+          type,
+          caption,
+          order,
+          moviePartId,
+        },
+      });
+
+      return NextResponse.json(media, { status: 201 });
+    } else {
+      // Anime Episode Media
+      let order = 0;
+      try {
+        const lastMedia = await db.media.findFirst({
+          where: { episodeId: episodeId! },
+          orderBy: { order: "desc" },
+        });
+        if (lastMedia) {
+          order = lastMedia.order + 1;
+        }
+      } catch {
+        // ignore
+      }
+
+      const media = await db.media.create({
+        data: {
+          url,
+          type,
+          caption,
+          order,
+          episodeId: episodeId!,
+        },
+      });
+
+      return NextResponse.json(media, { status: 201 });
     }
-
-    const media = await db.media.create({
-      data: {
-        url,
-        type,
-        caption,
-        order,
-        episodeId,
-      },
-    });
-
-    return NextResponse.json(media, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
