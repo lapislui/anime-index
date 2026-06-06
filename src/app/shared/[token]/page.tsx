@@ -41,6 +41,11 @@ interface SharedStats {
   };
   topTags: TagStat[];
   recentActivity: Activity[];
+  shareAnime?: boolean;
+  shareGames?: boolean;
+  shareMovies?: boolean;
+  shareActivity?: boolean;
+  shareTags?: boolean;
 }
 
 interface LibraryItem {
@@ -127,6 +132,27 @@ export default function SharedDashboardPage({
       if (!res.ok) throw new Error("Dashboard not found or not shared");
       const data = await res.json();
       setStats(data);
+
+      // Auto-correct mode if current one is private
+      if (mode === "anime" && data.shareAnime === false) {
+        if (data.shareGames !== false) {
+          setMode("games");
+        } else if (data.shareMovies !== false) {
+          setMode("movies");
+        }
+      } else if (mode === "games" && data.shareGames === false) {
+        if (data.shareAnime !== false) {
+          setMode("anime");
+        } else if (data.shareMovies !== false) {
+          setMode("movies");
+        }
+      } else if (mode === "movies" && data.shareMovies === false) {
+        if (data.shareAnime !== false) {
+          setMode("anime");
+        } else if (data.shareGames !== false) {
+          setMode("games");
+        }
+      }
     } catch (err) {
       console.error(err);
       setError("Shared dashboard profile is private or does not exist.");
@@ -264,6 +290,7 @@ export default function SharedDashboardPage({
 
   const totalStatusCount = completedVal + activeVal + plannedVal + droppedVal || 1;
   const getPercent = (count: number) => Math.round((count / totalStatusCount) * 100);
+  const allPrivate = !!(stats && stats.shareAnime === false && stats.shareGames === false && stats.shareMovies === false);
 
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -326,243 +353,281 @@ export default function SharedDashboardPage({
         </p>
 
         {/* Mode Selector */}
-        <div className="relative inline-flex rounded-xl bg-slate-900/60 p-0.5 border border-border/60 mt-6 z-10">
-          {["anime", "games", "movies"].map((m) => (
-            <button
-              key={m}
-              onClick={() => handleModeChange(m)}
-              className={`relative z-10 flex items-center gap-1 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
-                mode === m ? "text-slate-950 font-extrabold bg-accent" : "text-muted hover:text-foreground"
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
+        {stats && (stats.shareAnime !== false || stats.shareGames !== false || stats.shareMovies !== false) && (
+          <div className="relative inline-flex rounded-xl bg-slate-900/60 p-0.5 border border-border/60 mt-6 z-10">
+            {[
+              { id: "anime", label: "Anime", visible: stats.shareAnime !== false },
+              { id: "games", label: "Games", visible: stats.shareGames !== false },
+              { id: "movies", label: "Movies", visible: stats.shareMovies !== false }
+            ]
+              .filter(m => m.visible)
+              .map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleModeChange(m.id)}
+                  className={`relative z-10 flex items-center gap-1 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
+                    mode === m.id ? "text-slate-950 font-extrabold bg-accent" : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* Tabs Selector */}
-      <div className="flex border-b border-border/40 mb-8 bg-slate-950/20 rounded-xl p-1 max-w-xs border border-border/20">
-        <button
-          onClick={() => setTab("dashboard")}
-          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            tab === "dashboard" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
-          }`}
-        >
-          <span>📊</span> Dashboard
-        </button>
-        <button
-          onClick={() => setTab("library")}
-          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            tab === "library" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
-          }`}
-        >
-          <span>📚</span> Library
-        </button>
-      </div>
+      {stats && (stats.shareAnime !== false || stats.shareGames !== false || stats.shareMovies !== false) && (
+        <div className="flex border-b border-border/40 mb-8 bg-slate-950/20 rounded-xl p-1 max-w-xs border border-border/20">
+          <button
+            onClick={() => setTab("dashboard")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              tab === "dashboard" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
+            }`}
+          >
+            <span>📊</span> Dashboard
+          </button>
+          <button
+            onClick={() => setTab("library")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              tab === "library" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
+            }`}
+          >
+            <span>📚</span> Library
+          </button>
+        </div>
+      )}
 
       {/* ─── TAB 1: DASHBOARD VIEW ─── */}
       {tab === "dashboard" && (
         <>
-          {/* Metrics Row */}
-          <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: mode === "games" ? "Total Games" : mode === "movies" ? "Total Movies" : "Total Series", val: totalAnime, icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺", grad: "from-blue-600/10 to-blue-400/5" },
-              { label: mode === "games" ? "Chapters Logged" : mode === "movies" ? "Parts Logged" : "Episodes Logged", val: totalEpisodes, icon: "📝", grad: "from-emerald-600/10 to-emerald-400/5" },
-              { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, icon: "🏆", grad: "from-amber-600/10 to-amber-400/5" },
-              { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "In Progress", val: activeVal, icon: "⏳", grad: "from-purple-600/10 to-purple-400/5" },
-            ].map((c, i) => (
-              <div
-                key={i}
-                className={`glass-panel rounded-2xl p-6 bg-gradient-to-br ${c.grad} border border-border/40 shadow-md`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted">{c.label}</p>
-                    <h3 className="text-3xl font-extrabold mt-2 text-foreground">{c.val}</h3>
+          {allPrivate ? (
+            <div className="glass-panel rounded-2xl py-20 text-center border-border/40 shadow-lg">
+              <span className="text-5xl">🔒</span>
+              <h3 className="mt-4 text-base font-bold text-foreground">All metrics are private</h3>
+              <p className="mt-2 text-xs text-muted max-w-sm mx-auto leading-relaxed">
+                The owner of this dashboard has configured all Anime, Gaming, and Movie metrics to be private.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Metrics Row */}
+              <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
+                {[
+                  { label: mode === "games" ? "Total Games" : mode === "movies" ? "Total Movies" : "Total Series", val: totalAnime, icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺", grad: "from-blue-600/10 to-blue-400/5" },
+                  { label: mode === "games" ? "Chapters Logged" : mode === "movies" ? "Parts Logged" : "Episodes Logged", val: totalEpisodes, icon: "📝", grad: "from-emerald-600/10 to-emerald-400/5" },
+                  { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, icon: "🏆", grad: "from-amber-600/10 to-amber-400/5" },
+                  { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "In Progress", val: activeVal, icon: "⏳", grad: "from-purple-600/10 to-purple-400/5" },
+                ].map((c, i) => (
+                  <div
+                    key={i}
+                    className={`glass-panel rounded-2xl p-6 bg-gradient-to-br ${c.grad} border border-border/40 shadow-md`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted">{c.label}</p>
+                        <h3 className="text-3xl font-extrabold mt-2 text-foreground">{c.val}</h3>
+                      </div>
+                      <span className="text-2xl">{c.icon}</span>
+                    </div>
                   </div>
-                  <span className="text-2xl">{c.icon}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-12">
-            {/* Status Distribution + Tags */}
-            <div className="lg:col-span-7 space-y-8">
-              <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-6">
-                <div>
-                  <h3 className="text-base font-bold text-foreground">Status Distribution</h3>
-                  <p className="text-xs text-muted">Ratios based on total items added to library</p>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, color: "bg-amber-400" },
-                    { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "Watching", val: activeVal, color: "bg-purple-400" },
-                    { label: mode === "games" ? "Backlog" : mode === "movies" ? "Plan to Watch" : "Planned", val: plannedVal, color: "bg-blue-400" },
-                    { label: mode === "games" ? "Can't Play" : mode === "movies" ? "Dropped" : "Dropped", val: droppedVal, color: "bg-rose-400" },
-                  ].map((s, idx) => {
-                    const pct = getPercent(s.val);
-                    return (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-foreground">{s.label} ({s.val})</span>
-                          <span className="text-muted">{pct}%</span>
-                        </div>
-                        <div className="h-3 w-full bg-slate-950/80 rounded-full overflow-hidden border border-border/20">
-                          <div className={`h-full ${s.color} rounded-full`} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                ))}
               </div>
 
-              <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-5">
-                <div>
-                  <h3 className="text-base font-bold text-foreground">Top Genre Tags</h3>
-                  <p className="text-xs text-muted">Most populated categories</p>
-                </div>
-                {topTags.length === 0 ? (
-                  <p className="text-xs text-muted text-center py-6">No tags assigned yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {topTags.map((tag) => (
-                      <div key={tag.id} className="flex justify-between items-center bg-slate-950/20 rounded-xl p-3 border border-border/10">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-block h-3.5 w-3.5 rounded-full" style={{ backgroundColor: tag.color }} />
-                          <span className="text-xs font-bold text-foreground">{tag.name}</span>
-                        </div>
-                        <span className="text-xs font-semibold bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-muted">
-                          {tag._count.animes} {tag._count.animes === 1 ? "entry" : "entries"}
-                        </span>
+              <div className="grid gap-8 lg:grid-cols-12">
+                {/* Status Distribution + Tags */}
+                <div className={`${stats.shareActivity !== false ? "lg:col-span-7" : "lg:col-span-12"} space-y-8`}>
+                  <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-6">
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">Status Distribution</h3>
+                      <p className="text-xs text-muted">Ratios based on total items added to library</p>
+                    </div>
+                    <div className="space-y-4">
+                      {[
+                        { label: mode === "games" ? "Played" : mode === "movies" ? "Watched" : "Completed", val: completedVal, color: "bg-amber-400" },
+                        { label: mode === "games" ? "Playing" : mode === "movies" ? "Watching" : "Watching", val: activeVal, color: "bg-purple-400" },
+                        { label: mode === "games" ? "Backlog" : mode === "movies" ? "Plan to Watch" : "Planned", val: plannedVal, color: "bg-blue-400" },
+                        { label: mode === "games" ? "Can't Play" : mode === "movies" ? "Dropped" : "Dropped", val: droppedVal, color: "bg-rose-400" },
+                      ].map((s, idx) => {
+                        const pct = getPercent(s.val);
+                        return (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span className="text-foreground">{s.label} ({s.val})</span>
+                              <span className="text-muted">{pct}%</span>
+                            </div>
+                            <div className="h-3 w-full bg-slate-950/80 rounded-full overflow-hidden border border-border/20">
+                              <div className={`h-full ${s.color} rounded-full`} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {stats.shareTags !== false && (
+                    <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-5">
+                      <div>
+                        <h3 className="text-base font-bold text-foreground">Top Genre Tags</h3>
+                        <p className="text-xs text-muted">Most populated categories</p>
                       </div>
-                    ))}
+                      {topTags.length === 0 ? (
+                        <p className="text-xs text-muted text-center py-6">No tags assigned yet.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {topTags.map((tag) => (
+                            <div key={tag.id} className="flex justify-between items-center bg-slate-950/20 rounded-xl p-3 border border-border/10">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                                <span className="text-xs font-bold text-foreground">{tag.name}</span>
+                              </div>
+                              <span className="text-xs font-semibold bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-muted">
+                                {tag._count.animes} {tag._count.animes === 1 ? "entry" : "entries"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Activity */}
+                {stats.shareActivity !== false && (
+                  <div className="lg:col-span-5">
+                    <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-5 sticky top-[100px]">
+                      <div>
+                        <h3 className="text-base font-bold text-foreground">Recent Activity Feed</h3>
+                        <p className="text-xs text-muted">Latest breakdowns logged</p>
+                      </div>
+                      {recentActivity.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
+                          <span className="text-4xl mb-3">✍️</span>
+                          <p className="text-xs">No entries cataloged yet.</p>
+                        </div>
+                      ) : (
+                        <div className="relative border-l border-border/30 pl-4 space-y-6">
+                          {recentActivity.map((activity) => (
+                            <div key={activity.id} className="relative space-y-1">
+                              <span className="absolute -left-[21px] top-1.5 flex h-2 w-2 rounded-full bg-accent ring-4 ring-slate-950" />
+                              <p className="text-[10px] font-bold text-muted uppercase tracking-widest">
+                                {new Date(activity.createdAt).toLocaleDateString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </p>
+                              <h4 className="text-xs font-bold text-foreground leading-snug">
+                                Logged {mode === "games" ? "Chapter" : mode === "movies" ? "Part" : "Episode"} {activity.number}: &ldquo;{activity.title}&rdquo;
+                              </h4>
+                              <p className="text-[10px] text-muted leading-relaxed">
+                                {mode === "games" ? "Game" : mode === "movies" ? "Movie" : "Series"}: <span className="text-foreground font-semibold">{activity.anime.title}</span>
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="lg:col-span-5">
-              <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-5 sticky top-[100px]">
-                <div>
-                  <h3 className="text-base font-bold text-foreground">Recent Activity Feed</h3>
-                  <p className="text-xs text-muted">Latest breakdowns logged</p>
-                </div>
-                {recentActivity.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
-                    <span className="text-4xl mb-3">✍️</span>
-                    <p className="text-xs">No entries cataloged yet.</p>
-                  </div>
-                ) : (
-                  <div className="relative border-l border-border/30 pl-4 space-y-6">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="relative space-y-1">
-                        <span className="absolute -left-[21px] top-1.5 flex h-2 w-2 rounded-full bg-accent ring-4 ring-slate-950" />
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest">
-                          {new Date(activity.createdAt).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </p>
-                        <h4 className="text-xs font-bold text-foreground leading-snug">
-                          Logged {mode === "games" ? "Chapter" : mode === "movies" ? "Part" : "Episode"} {activity.number}: &ldquo;{activity.title}&rdquo;
-                        </h4>
-                        <p className="text-[10px] text-muted leading-relaxed">
-                          {mode === "games" ? "Game" : mode === "movies" ? "Movie" : "Series"}: <span className="text-foreground font-semibold">{activity.anime.title}</span>
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </>
       )}
 
       {/* ─── TAB 2: LIBRARY VIEW ─── */}
       {tab === "library" && (
         <>
-          {loadingLibrary ? (
-            <div className="py-32 text-center text-muted">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-accent border-r-transparent align-[-0.125em]" />
-              <p className="mt-4 text-sm font-semibold tracking-wide text-muted">Scanning Shared Library...</p>
-            </div>
-          ) : libraryItems.length === 0 ? (
-            <div className="glass-panel rounded-2xl py-20 text-center shadow-lg border border-border/50">
-              <span className="text-5xl">{mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "🎌"}</span>
-              <p className="mt-4 text-lg font-bold text-muted">No {mode === "games" ? "game" : mode === "movies" ? "movie" : "anime"} entries shared yet.</p>
+          {allPrivate ? (
+            <div className="glass-panel rounded-2xl py-20 text-center border-border/40 shadow-lg">
+              <span className="text-5xl">🔒</span>
+              <h3 className="mt-4 text-base font-bold text-foreground">All logs are private</h3>
+              <p className="mt-2 text-xs text-muted max-w-sm mx-auto leading-relaxed">
+                The owner of this dashboard has configured all library indexes to be private.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {libraryItems.map((item) => {
-                const statusInfo = statusLabels[item.status] || { label: item.status, className: "bg-slate-500/10 text-slate-400 border border-slate-500/20" };
-                const countVal = item._count.episodes !== undefined ? item._count.episodes : item._count.chapters !== undefined ? item._count.chapters : item._count.parts || 0;
-                const countUnit = mode === "games" ? "chapter" : mode === "movies" ? "part" : "episode";
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => openDetails(item.id)}
-                    className="block cursor-pointer group"
-                  >
-                    <div className="glass-panel group overflow-hidden rounded-xl h-full flex flex-col border border-border/40 hover:border-accent/30 transition-all duration-300">
-                      {/* Cover Image */}
-                      <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
-                        {item.coverImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={item.coverImage}
-                            alt={item.title}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-4xl text-accent/30">
-                            {mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺"}
+            <>
+              {loadingLibrary ? (
+                <div className="py-32 text-center text-muted">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-accent border-r-transparent align-[-0.125em]" />
+                  <p className="mt-4 text-sm font-semibold tracking-wide text-muted">Scanning Shared Library...</p>
+                </div>
+              ) : libraryItems.length === 0 ? (
+                <div className="glass-panel rounded-2xl py-20 text-center shadow-lg border border-border/50">
+                  <span className="text-5xl">{mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "🎌"}</span>
+                  <p className="mt-4 text-lg font-bold text-muted">No {mode === "games" ? "game" : mode === "movies" ? "movie" : "anime"} entries shared yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  {libraryItems.map((item) => {
+                    const statusInfo = statusLabels[item.status] || { label: item.status, className: "bg-slate-500/10 text-slate-400 border border-slate-500/20" };
+                    const countVal = item._count.episodes !== undefined ? item._count.episodes : item._count.chapters !== undefined ? item._count.chapters : item._count.parts || 0;
+                    const countUnit = mode === "games" ? "chapter" : mode === "movies" ? "part" : "episode";
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => openDetails(item.id)}
+                        className="block cursor-pointer group"
+                      >
+                        <div className="glass-panel group overflow-hidden rounded-xl h-full flex flex-col border border-border/40 hover:border-accent/30 transition-all duration-300">
+                          {/* Cover Image */}
+                          <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
+                            {item.coverImage ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.coverImage}
+                                alt={item.title}
+                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-4xl text-accent/30">
+                                {mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📺"}
+                              </div>
+                            )}
+                            <span
+                              className={`absolute right-2 top-2 rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider backdrop-blur-md ${statusInfo.className}`}
+                            >
+                              {statusInfo.label}
+                            </span>
                           </div>
-                        )}
-                        <span
-                          className={`absolute right-2 top-2 rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider backdrop-blur-md ${statusInfo.className}`}
-                        >
-                          {statusInfo.label}
-                        </span>
-                      </div>
 
-                      {/* Info */}
-                      <div className="p-4 flex flex-col flex-1">
-                        <h3 className="text-xs font-bold leading-snug text-foreground line-clamp-1 group-hover:text-accent transition-colors duration-300">
-                          {item.title}
-                        </h3>
-                        {item.description && (
-                          <p className="mt-1 text-[10px] text-muted line-clamp-2 leading-relaxed flex-1">{item.description}</p>
-                        )}
-                        <p className="mt-2 text-[9px] font-bold text-accent uppercase tracking-wider">
-                          {countVal} {countUnit}{countVal !== 1 ? "s" : ""} logged
-                        </p>
-                        {item.tags.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {item.tags.slice(0, 2).map((tag) => (
-                              <span
-                                key={tag.id}
-                                className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold"
-                                style={{ backgroundColor: tag.color + "15", color: tag.color, border: `1px solid ${tag.color}30` }}
-                              >
-                                {tag.name}
-                              </span>
-                            ))}
-                            {item.tags.length > 2 && (
-                              <span className="text-[8px] text-muted self-center ml-1 font-semibold">+{item.tags.length - 2}</span>
+                          {/* Info */}
+                          <div className="p-4 flex flex-col flex-1">
+                            <h3 className="text-xs font-bold leading-snug text-foreground line-clamp-1 group-hover:text-accent transition-colors duration-300">
+                              {item.title}
+                            </h3>
+                            {item.description && (
+                              <p className="mt-1 text-[10px] text-muted line-clamp-2 leading-relaxed flex-1">{item.description}</p>
+                            )}
+                            <p className="mt-2 text-[9px] font-bold text-accent uppercase tracking-wider">
+                              {countVal} {countUnit}{countVal !== 1 ? "s" : ""} logged
+                            </p>
+                            {item.tags.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {item.tags.slice(0, 2).map((tag) => (
+                                  <span
+                                    key={tag.id}
+                                    className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold"
+                                    style={{ backgroundColor: tag.color + "15", color: tag.color, border: `1px solid ${tag.color}30` }}
+                                  >
+                                    {tag.name}
+                                  </span>
+                                ))}
+                                {item.tags.length > 2 && (
+                                  <span className="text-[8px] text-muted self-center ml-1 font-semibold">+{item.tags.length - 2}</span>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </>
       )}

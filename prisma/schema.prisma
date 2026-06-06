@@ -30,6 +30,11 @@ model User {
   facebookId     String?   @unique
   shareDashboard Boolean   @default(false)
   shareToken     String    @unique @default(cuid())
+  shareAnime     Boolean   @default(true)
+  shareGames     Boolean   @default(true)
+  shareMovies    Boolean   @default(true)
+  shareActivity  Boolean   @default(true)
+  shareTags      Boolean   @default(true)
   following      Follow[]  @relation("Following")
   followers      Follow[]  @relation("Followers")
 }

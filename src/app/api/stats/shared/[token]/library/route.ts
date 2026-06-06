@@ -18,6 +18,16 @@ export async function GET(
       return NextResponse.json({ error: "Dashboard not found or not shared" }, { status: 404 });
     }
 
+    if (mode === "anime" && !user.shareAnime) {
+      return NextResponse.json({ error: "Anime library is private" }, { status: 403 });
+    }
+    if (mode === "games" && !user.shareGames) {
+      return NextResponse.json({ error: "Gaming library is private" }, { status: 403 });
+    }
+    if (mode === "movies" && !user.shareMovies) {
+      return NextResponse.json({ error: "Movie library is private" }, { status: 403 });
+    }
+
     if (mode === "movies") {
       const movies = await db.movie.findMany({
         where: { userId: user.id },

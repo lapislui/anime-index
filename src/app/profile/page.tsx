@@ -10,6 +10,11 @@ interface SessionUser {
   email: string;
   shareDashboard: boolean;
   shareToken: string;
+  shareAnime: boolean;
+  shareGames: boolean;
+  shareMovies: boolean;
+  shareActivity: boolean;
+  shareTags: boolean;
   googleConnected: boolean;
   githubConnected: boolean;
   microsoftConnected: boolean;
@@ -241,18 +246,19 @@ function ProfilePageInner() {
     }
   }
 
-  // Sharing Toggle
-  async function toggleSharing() {
+  // Sharing preference toggle
+  async function toggleSharingPreference(field: "shareDashboard" | "shareAnime" | "shareGames" | "shareMovies" | "shareActivity" | "shareTags") {
     if (!user) return;
     setShareLoading(true);
+    const newValue = !user[field];
     try {
       const res = await fetch("/api/stats", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shareDashboard: !user.shareDashboard }),
+        body: JSON.stringify({ [field]: newValue }),
       });
       if (res.ok) {
-        setUser((prev) => prev ? { ...prev, shareDashboard: !prev.shareDashboard } : prev);
+        setUser((prev) => prev ? { ...prev, [field]: newValue } : prev);
       }
     } finally {
       setShareLoading(false);
@@ -588,7 +594,7 @@ function ProfilePageInner() {
               </p>
             </div>
             <button
-              onClick={toggleSharing}
+              onClick={() => toggleSharingPreference("shareDashboard")}
               disabled={shareLoading}
               className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
                 user.shareDashboard ? "border-accent bg-accent/20" : "border-border/40 bg-slate-950/60"
@@ -604,18 +610,64 @@ function ProfilePageInner() {
           </div>
 
           {user.shareDashboard && (
-            <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 animate-in fade-in-50">
-              <div className="flex-1 rounded-xl bg-slate-950/60 border border-border/40 px-4 py-2.5 text-xs font-mono text-muted truncate select-all">
-                {typeof window !== "undefined" ? `${window.location.origin}/shared/${user.shareToken}` : `/shared/${user.shareToken}`}
+            <div className="mt-6 border-t border-border/20 pt-6 space-y-5 animate-in slide-in-from-top-4 duration-300">
+              <div>
+                <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <span>⚙️</span> Shared Content Preferences
+                </h4>
+                <p className="text-[10px] text-muted mt-0.5">
+                  Customize which components are public on your shared dashboard. Disabled options are kept private.
+                </p>
               </div>
-              <button
-                onClick={copyShareLink}
-                className={`glow-btn rounded-xl px-5 py-2.5 text-xs font-bold whitespace-nowrap transition-all ${
-                  copySuccess ? "!bg-emerald-500 shadow-emerald-500/30" : ""
-                }`}
-              >
-                {copySuccess ? "✓ Copied!" : "Copy Link"}
-              </button>
+
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                {([
+                  { field: "shareAnime", label: "Share Anime", desc: "Show series, episodes, & watch metrics" },
+                  { field: "shareGames", label: "Share Games", desc: "Show gameplay logs, platform format, & completion" },
+                  { field: "shareMovies", label: "Share Movies", desc: "Show movie index, parts, & watch records" },
+                  { field: "shareActivity", label: "Share Activity Feed", desc: "Show recent breakdown entries updates log" },
+                  { field: "shareTags", label: "Share Genre Tags", desc: "Show populated genre metrics & category list" },
+                ] as const).map((item) => {
+                  const val = !!(user && user[item.field]);
+                  return (
+                    <div
+                      key={item.field}
+                      onClick={() => toggleSharingPreference(item.field)}
+                      className={`flex justify-between items-center rounded-xl p-3 border transition-all duration-300 cursor-pointer ${
+                        val 
+                          ? "bg-slate-950/40 border-accent/20 hover:border-accent/40" 
+                          : "bg-slate-950/10 border-border/20 hover:border-border/30 opacity-70"
+                      }`}
+                    >
+                      <div className="flex-1 pr-2">
+                        <span className="block text-[11px] font-bold text-foreground leading-none">{item.label}</span>
+                        <span className="block text-[8px] text-muted mt-1 leading-snug">{item.desc}</span>
+                      </div>
+                      <div className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border transition-colors duration-200 ${
+                        val ? "border-accent bg-accent/20" : "border-border/30 bg-slate-950/60"
+                      }`}>
+                        <span className={`inline-block h-3.5 w-3.5 translate-x-0.5 translate-y-0.5 transform rounded-full shadow transition-transform duration-200 ${
+                          val ? "translate-x-4 bg-accent" : "bg-muted"
+                        }`} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="flex-1 rounded-xl bg-slate-950/60 border border-border/40 px-4 py-2.5 text-xs font-mono text-muted truncate select-all">
+                  {typeof window !== "undefined" ? `${window.location.origin}/shared/${user.shareToken}` : `/shared/${user.shareToken}`}
+                </div>
+                <button
+                  onClick={copyShareLink}
+                  className={`glow-btn rounded-xl px-5 py-2.5 text-xs font-bold whitespace-nowrap transition-all ${
+                    copySuccess ? "!bg-emerald-500 shadow-emerald-500/30" : ""
+                  }`}
+                >
+                  {copySuccess ? "✓ Copied!" : "Copy Link"}
+                </button>
+              </div>
             </div>
           )}
         </div>

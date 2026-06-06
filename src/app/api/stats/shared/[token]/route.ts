@@ -16,6 +16,52 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get("mode") || "anime";
 
+    if (mode === "anime" && !user.shareAnime) {
+      return NextResponse.json({
+        ownerEmail: user.email,
+        totalAnime: 0,
+        totalEpisodes: 0,
+        statusCounts: { watching: 0, completed: 0, planned: 0, dropped: 0 },
+        topTags: [],
+        recentActivity: [],
+        shareAnime: false,
+        shareGames: user.shareGames,
+        shareMovies: user.shareMovies,
+        shareActivity: user.shareActivity,
+        shareTags: user.shareTags,
+      });
+    }
+    if (mode === "games" && !user.shareGames) {
+      return NextResponse.json({
+        ownerEmail: user.email,
+        totalAnime: 0,
+        totalEpisodes: 0,
+        statusCounts: { played: 0, playing: 0, backlog: 0, cant_play: 0 },
+        topTags: [],
+        recentActivity: [],
+        shareAnime: user.shareAnime,
+        shareGames: false,
+        shareMovies: user.shareMovies,
+        shareActivity: user.shareActivity,
+        shareTags: user.shareTags,
+      });
+    }
+    if (mode === "movies" && !user.shareMovies) {
+      return NextResponse.json({
+        ownerEmail: user.email,
+        totalAnime: 0,
+        totalEpisodes: 0,
+        statusCounts: { watching: 0, completed: 0, planned: 0, dropped: 0 },
+        topTags: [],
+        recentActivity: [],
+        shareAnime: user.shareAnime,
+        shareGames: user.shareGames,
+        shareMovies: false,
+        shareActivity: user.shareActivity,
+        shareTags: user.shareTags,
+      });
+    }
+
     if (mode === "movies") {
       const totalMovies = await db.movie.count({ where: { userId: user.id } });
       const totalParts = await db.moviePart.count({
@@ -56,17 +102,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         totalAnime: totalMovies,
         totalEpisodes: totalParts,
         statusCounts,
-        topTags: topTags.map(tag => ({
+        topTags: user.shareTags ? topTags.map(tag => ({
           ...tag,
           _count: { animes: tag._count.movies }
-        })),
-        recentActivity: recentActivity.map(act => ({
+        })) : [],
+        recentActivity: user.shareActivity ? recentActivity.map(act => ({
           id: act.id,
           number: act.number,
           title: act.title,
           createdAt: act.createdAt,
           anime: act.movie
-        })),
+        })) : [],
+        shareAnime: user.shareAnime,
+        shareGames: user.shareGames,
+        shareMovies: user.shareMovies,
+        shareActivity: user.shareActivity,
+        shareTags: user.shareTags,
       });
     } else if (mode === "games") {
       const totalGames = await db.game.count({ where: { userId: user.id } });
@@ -108,17 +159,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         totalAnime: totalGames,
         totalEpisodes: totalChapters,
         statusCounts,
-        topTags: topTags.map(tag => ({
+        topTags: user.shareTags ? topTags.map(tag => ({
           ...tag,
           _count: { animes: tag._count.games }
-        })),
-        recentActivity: recentActivity.map(act => ({
+        })) : [],
+        recentActivity: user.shareActivity ? recentActivity.map(act => ({
           id: act.id,
           number: act.number,
           title: act.title,
           createdAt: act.createdAt,
           anime: act.game
-        })),
+        })) : [],
+        shareAnime: user.shareAnime,
+        shareGames: user.shareGames,
+        shareMovies: user.shareMovies,
+        shareActivity: user.shareActivity,
+        shareTags: user.shareTags,
       });
     }
 
@@ -162,8 +218,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       totalAnime,
       totalEpisodes,
       statusCounts,
-      topTags,
-      recentActivity,
+      topTags: user.shareTags ? topTags : [],
+      recentActivity: user.shareActivity ? recentActivity : [],
+      shareAnime: user.shareAnime,
+      shareGames: user.shareGames,
+      shareMovies: user.shareMovies,
+      shareActivity: user.shareActivity,
+      shareTags: user.shareTags,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

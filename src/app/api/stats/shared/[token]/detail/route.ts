@@ -23,6 +23,16 @@ export async function GET(
       return NextResponse.json({ error: "Dashboard not found or not shared" }, { status: 404 });
     }
 
+    if (mode === "anime" && !user.shareAnime) {
+      return NextResponse.json({ error: "Anime details are private" }, { status: 403 });
+    }
+    if (mode === "games" && !user.shareGames) {
+      return NextResponse.json({ error: "Gaming details are private" }, { status: 403 });
+    }
+    if (mode === "movies" && !user.shareMovies) {
+      return NextResponse.json({ error: "Movie details are private" }, { status: 403 });
+    }
+
     if (mode === "movies") {
       const movie = await db.movie.findFirst({
         where: { id: itemId, userId: user.id },

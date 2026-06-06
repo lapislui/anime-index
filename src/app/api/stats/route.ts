@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PATCH /api/stats — toggle dashboard sharing
+// PATCH /api/stats — toggle dashboard sharing and selective fields
 export async function PATCH(request: NextRequest) {
   try {
     const user = await getCurrentUser(request);
@@ -179,14 +179,37 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { shareDashboard } = await request.json();
+    const body = await request.json();
+    const dataToUpdate: {
+      shareDashboard?: boolean;
+      shareAnime?: boolean;
+      shareGames?: boolean;
+      shareMovies?: boolean;
+      shareActivity?: boolean;
+      shareTags?: boolean;
+    } = {};
 
-    await db.user.update({
+    if (body.shareDashboard !== undefined) dataToUpdate.shareDashboard = !!body.shareDashboard;
+    if (body.shareAnime !== undefined) dataToUpdate.shareAnime = !!body.shareAnime;
+    if (body.shareGames !== undefined) dataToUpdate.shareGames = !!body.shareGames;
+    if (body.shareMovies !== undefined) dataToUpdate.shareMovies = !!body.shareMovies;
+    if (body.shareActivity !== undefined) dataToUpdate.shareActivity = !!body.shareActivity;
+    if (body.shareTags !== undefined) dataToUpdate.shareTags = !!body.shareTags;
+
+    const updated = await db.user.update({
       where: { id: user.id },
-      data: { shareDashboard: !!shareDashboard },
+      data: dataToUpdate,
     });
 
-    return NextResponse.json({ success: true, shareDashboard: !!shareDashboard });
+    return NextResponse.json({
+      success: true,
+      shareDashboard: updated.shareDashboard,
+      shareAnime: updated.shareAnime,
+      shareGames: updated.shareGames,
+      shareMovies: updated.shareMovies,
+      shareActivity: updated.shareActivity,
+      shareTags: updated.shareTags,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
