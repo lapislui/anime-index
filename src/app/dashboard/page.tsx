@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
 import { useMode } from "@/context/ModeContext";
+import { startRegistration } from "@simplewebauthn/browser";
 
 interface TagStat {
   id: string;
@@ -53,6 +54,12 @@ export default function DashboardPage() {
   const [shareLoading, setShareLoading] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
+  // Passkey states
+  const [passkeys, setPasskeys] = useState<{ id: string; credentialId: string; counter: number }[]>([]);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyError, setPasskeyError] = useState("");
+  const [passkeySuccess, setPasskeySuccess] = useState("");
+
   const loadStats = useCallback(() => {
     setLoading(true);
     fetch(`/api/stats?mode=${mode}`)
@@ -71,9 +78,80 @@ export default function DashboardPage() {
       });
   }, [mode]);
 
+  const fetchPasskeys = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/passkey");
+      if (!res.ok) throw new Error("Failed to load passkeys");
+      const data = await res.json();
+      setPasskeys(data.passkeys || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  async function registerPasskey() {
+    setPasskeyLoading(true);
+    setPasskeyError("");
+    setPasskeySuccess("");
+    try {
+      const optRes = await fetch("/api/auth/passkey?action=register-options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!optRes.ok) {
+        const d = await optRes.json();
+        throw new Error(d.error || "Could not get registration options");
+      }
+      const options = await optRes.json();
+
+      const credential = await startRegistration({ optionsJSON: options });
+
+      const verRes = await fetch("/api/auth/passkey?action=register-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credential),
+      });
+      const verData = await verRes.json();
+      if (!verRes.ok) throw new Error(verData.error || "Passkey registration verification failed");
+      
+      setPasskeySuccess("New passkey successfully registered!");
+      fetchPasskeys();
+    } catch (err: unknown) {
+      console.error(err);
+      setPasskeyError(err instanceof Error ? err.message : "Passkey registration failed");
+    } finally {
+      setPasskeyLoading(false);
+    }
+  }
+
+  async function deletePasskey(id: string) {
+    if (!confirm("Are you sure you want to revoke this passkey?")) return;
+    setPasskeyLoading(true);
+    setPasskeyError("");
+    setPasskeySuccess("");
+    try {
+      const res = await fetch(`/api/auth/passkey?id=${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Failed to revoke passkey");
+      }
+      setPasskeySuccess("Passkey revoked successfully.");
+      fetchPasskeys();
+    } catch (err: unknown) {
+      console.error(err);
+      setPasskeyError(err instanceof Error ? err.message : "Failed to revoke passkey");
+    } finally {
+      setPasskeyLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+    fetchPasskeys();
+  }, [loadStats, fetchPasskeys]);
 
   async function toggleSharing() {
     if (!stats) return;
@@ -352,6 +430,75 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Security & Passkeys Panel */}
+      <div className="mt-8 glass-panel rounded-2xl p-6 shadow-xl space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+            <span>🪪</span> Security & Passkeys
+          </h3>
+          <p className="text-xs text-muted mt-1 max-w-md">
+            Register secure, passwordless passkeys for your account. Once registered, you can log in using biometric verification (Face ID, fingerprint, or hardware security keys).
+          </p>
+        </div>
+
+        {passkeyError && (
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-400 flex items-start gap-2 animate-in fade-in-50">
+            <span className="mt-0.5">⚠️</span> {passkeyError}
+          </div>
+        )}
+        {passkeySuccess && (
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-400 flex items-start gap-2 animate-in fade-in-50">
+            <span className="mt-0.5">✅</span> {passkeySuccess}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <h4 className="text-xs font-bold text-muted uppercase tracking-wider">Your Registered Passkeys ({passkeys.length})</h4>
+          
+          {passkeys.length === 0 ? (
+            <p className="text-xs text-muted py-2">No passkeys registered on this account yet.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {passkeys.map((pk) => (
+                <div key={pk.id} className="flex justify-between items-center bg-slate-950/40 rounded-xl p-3 border border-border/40">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg text-accent">🔑</span>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Passkey {pk.credentialId.substring(0, 16)}...</p>
+                      <p className="text-[10px] text-muted">Use Count: {pk.counter}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deletePasskey(pk.id)}
+                    disabled={passkeyLoading}
+                    className="rounded-lg bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/20 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={registerPasskey}
+            disabled={passkeyLoading}
+            className="glow-btn rounded-xl px-5 py-2.5 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+          >
+            {passkeyLoading ? (
+              <>
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-solid border-slate-950 border-r-transparent" />
+                <span>Registering…</span>
+              </>
+            ) : (
+              <>
+                <span>➕</span> Register New Passkey
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

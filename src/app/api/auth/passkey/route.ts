@@ -200,3 +200,60 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const passkeys = await db.passkey.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        credentialId: true,
+        counter: true,
+      },
+    });
+
+    return NextResponse.json({ passkeys });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Passkey ID is required" }, { status: 400 });
+    }
+
+    const passkey = await db.passkey.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!passkey) {
+      return NextResponse.json({ error: "Passkey not found" }, { status: 404 });
+    }
+
+    await db.passkey.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+

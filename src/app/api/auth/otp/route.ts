@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import crypto from "crypto";
+import { sendOtpEmail } from "@/lib/mail";
 
 // POST /api/auth/otp?action=request — Generate OTP and log to console (dev) or send email (prod)
 // POST /api/auth/otp?action=verify  — Verify OTP code and create a session
@@ -34,15 +35,15 @@ export async function POST(request: NextRequest) {
         data: { otpCode, otpExpiresAt },
       });
 
-      // In development, log to console. In production, send via email provider.
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`\n🔑 OTP for ${normalizedEmail}: ${otpCode} (expires in 10 min)\n`);
-      } else {
-        // TODO: integrate email provider (e.g. SendGrid, Resend) here
-        console.log(`OTP requested for ${normalizedEmail} (email delivery not configured)`);
-      }
+      // Send OTP via SMTP (with terminal fallback if credentials are not configured)
+      await sendOtpEmail(normalizedEmail, otpCode);
 
-      return NextResponse.json({ success: true, message: "OTP sent. Check your terminal in development mode." });
+      return NextResponse.json({ 
+        success: true, 
+        message: process.env.SMTP_USER && process.env.SMTP_PASSWORD
+          ? "OTP sent. Check your email."
+          : "OTP sent. Check your terminal in development mode."
+      });
     }
 
     if (action === "verify") {

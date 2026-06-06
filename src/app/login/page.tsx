@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  startRegistration,
   startAuthentication,
 } from "@simplewebauthn/browser";
 
@@ -123,37 +122,6 @@ function LoginPageInner() {
     }
   }
 
-  // ── Passkey Registration (requires existing session) ─────────────────────────
-  async function handlePasskeyRegister() {
-    reset();
-    setLoading(true);
-    try {
-      const optRes = await fetch("/api/auth/passkey?action=register-options", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (!optRes.ok) {
-        const d = await optRes.json();
-        throw new Error(d.error || "Could not get registration options. Are you logged in?");
-      }
-      const options = await optRes.json();
-      const credential = await startRegistration({ optionsJSON: options });
-
-      const verRes = await fetch("/api/auth/passkey?action=register-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credential),
-      });
-      const verData = await verRes.json();
-      if (!verRes.ok) throw new Error(verData.error || "Passkey registration failed");
-      setSuccess("Passkey registered! You can now use it to log in.");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Passkey registration failed");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   // ── Passkey Login ────────────────────────────────────────────────────────────
   async function handlePasskeyLogin(e: React.FormEvent) {
@@ -393,55 +361,32 @@ function LoginPageInner() {
 
           {/* ── Passkey Tab ── */}
           {tab === "passkey" && (
-            <div className="space-y-5">
-              <form onSubmit={handlePasskeyLogin} className="space-y-4">
-                <p className="text-xs text-muted leading-relaxed">
-                  Sign in with a biometric passkey (Face ID, fingerprint, hardware key). You must have
-                  registered a passkey from your account settings first.
-                </p>
-                <div>
-                  <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wider">Email</label>
-                  <input
-                    id="passkey-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950/60 border border-border/40 px-4 py-3 text-sm text-foreground placeholder-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <button
-                  id="passkey-login-submit"
-                  type="submit"
-                  disabled={loading}
-                  className="glow-btn w-full rounded-xl py-3 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Authenticating…" : "🪪 Sign In with Passkey"}
-                </button>
-              </form>
-
-              <div className="relative my-4 flex items-center">
-                <div className="flex-1 border-t border-border/30" />
-                <span className="mx-3 text-xs text-muted">or</span>
-                <div className="flex-1 border-t border-border/30" />
-              </div>
-
+            <form onSubmit={handlePasskeyLogin} className="space-y-4">
+              <p className="text-xs text-muted leading-relaxed">
+                Sign in with a biometric passkey (Face ID, fingerprint, hardware key). You must have
+                registered a passkey from your dashboard security settings first.
+              </p>
               <div>
-                <p className="text-xs text-muted mb-3 leading-relaxed">
-                  Already signed in? Register a new passkey for your account to enable passwordless login.
-                </p>
-                <button
-                  id="passkey-register-btn"
-                  type="button"
-                  disabled={loading}
-                  onClick={handlePasskeyRegister}
-                  className="w-full rounded-xl border border-accent/30 bg-accent/5 py-3 text-sm font-bold text-accent hover:bg-accent/10 transition-all disabled:opacity-50"
-                >
-                  {loading ? "Registering…" : "Register New Passkey"}
-                </button>
+                <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wider">Email</label>
+                <input
+                  id="passkey-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl bg-slate-950/60 border border-border/40 px-4 py-3 text-sm text-foreground placeholder-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all"
+                  placeholder="you@example.com"
+                />
               </div>
-            </div>
+              <button
+                id="passkey-login-submit"
+                type="submit"
+                disabled={loading}
+                className="glow-btn w-full rounded-xl py-3 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              >
+                {loading ? "Authenticating…" : "🪪 Sign In with Passkey"}
+              </button>
+            </form>
           )}
         </div>
 
