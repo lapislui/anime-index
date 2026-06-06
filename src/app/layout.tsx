@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
+import RouteGuard from "@/components/RouteGuard";
 import { ModeProvider } from "@/context/ModeContext";
 import "./globals.css";
 
@@ -32,9 +33,11 @@ export default function RootLayout({
       >
         <ModeProvider>
           <Navbar />
-          <main className="flex-1 w-full">
-            {children}
-          </main>
+          <RouteGuard>
+            <main className="flex-1 w-full">
+              {children}
+            </main>
+          </RouteGuard>
         </ModeProvider>
         <footer className="border-t border-border bg-slate-950/40 py-6 text-center text-xs text-muted">
           <p>&copy; {new Date().getFullYear()} ANIMEVERSE. Created with premium aesthetics. Powered by Jikan API.</p>

@@ -57,12 +57,19 @@ export default function Navbar() {
     { href: "/news", label: "News", icon: "📰" },
   ];
 
+  const filteredLinks = links.filter((link) => {
+    if (mode !== "anime" && (link.label === "Discover" || link.label === "News")) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-slate-950/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 py-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         {/* Logo and Mode Switcher */}
         <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href={mode === "anime" ? "/" : "/library"} className="flex items-center gap-2 group">
             <span className="text-2xl font-bold bg-gradient-to-r from-accent to-accent-light bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300">
               ✦
             </span>
@@ -115,7 +122,7 @@ export default function Navbar() {
         {/* Links & Profile */}
         <div className="flex items-center gap-1 sm:gap-2 justify-end">
           <div className="flex gap-1 sm:gap-2">
-            {links.map((link) => {
+            {filteredLinks.map((link) => {
               const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
               return (
                 <Link
