@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ssoProviders, exchangeCodeForToken, fetchSSOUser } from "@/lib/sso";
+import { exchangeCodeForToken, fetchSSOUser } from "@/lib/sso";
 import { getCurrentUser, createSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ provider: string }> }
 ) {
   const { provider: providerId } = await params;
-  const provider = ssoProviders[providerId];
 
   const origin = process.env.NEXT_PUBLIC_ORIGIN || request.nextUrl.origin;
   const redirectUri = `${origin}/api/auth/sso/${providerId}/callback`;
@@ -43,7 +43,7 @@ export async function GET(
       const existingUserWithSSO = await db.user.findFirst({
         where: {
           [providerId + "Id"]: ssoUser.id,
-        } as any,
+        } as unknown as Prisma.UserWhereInput,
       });
 
       if (existingUserWithSSO) {
@@ -60,7 +60,7 @@ export async function GET(
         where: { id: loggedInUser.id },
         data: {
           [providerId + "Id"]: ssoUser.id,
-        } as any,
+        } as unknown as Prisma.UserUpdateInput,
       });
 
       return NextResponse.redirect(`${origin}/dashboard?success=linked`);
@@ -70,7 +70,7 @@ export async function GET(
       let user = await db.user.findFirst({
         where: {
           [providerId + "Id"]: ssoUser.id,
-        } as any,
+        } as unknown as Prisma.UserWhereInput,
       });
 
       if (!user) {
@@ -87,7 +87,7 @@ export async function GET(
               where: { id: user.id },
               data: {
                 [providerId + "Id"]: ssoUser.id,
-              } as any,
+              } as unknown as Prisma.UserUpdateInput,
             });
           }
         }
@@ -101,7 +101,7 @@ export async function GET(
             email,
             passwordHash: null,
             [providerId + "Id"]: ssoUser.id,
-          } as any,
+          } as unknown as Prisma.UserCreateInput,
         });
       }
 

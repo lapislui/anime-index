@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 const VALID_PROVIDERS = ["google", "github", "microsoft", "discord", "facebook"];
 
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Check if the provider is actually connected
     const providerIdField = provider + "Id";
-    const hasTargetProvider = !!(userDetails as any)[providerIdField];
+    const hasTargetProvider = !!(userDetails as unknown as Record<string, unknown>)[providerIdField];
 
     if (!hasTargetProvider) {
       return NextResponse.json({ error: "Provider is not connected" }, { status: 400 });
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       where: { id: loggedInUser.id },
       data: {
         [providerIdField]: null,
-      } as any,
+      } as unknown as Prisma.UserUpdateInput,
     });
 
     return NextResponse.json({ success: true });

@@ -155,9 +155,15 @@ export async function fetchSSOUser(providerId: string, accessToken: string): Pro
         if (emailRes.ok) {
           const emails = await emailRes.ok ? await emailRes.json() : [];
           if (Array.isArray(emails)) {
-            const primaryEmail = emails.find((e: any) => e.primary && e.verified)?.email || 
-                                 emails.find((e: any) => e.verified)?.email || 
-                                 emails[0]?.email;
+            interface GitHubEmail {
+              email: string;
+              primary: boolean;
+              verified: boolean;
+            }
+            const githubEmails = emails as GitHubEmail[];
+            const primaryEmail = githubEmails.find((e) => e.primary && e.verified)?.email || 
+                                 githubEmails.find((e) => e.verified)?.email || 
+                                 githubEmails[0]?.email;
             if (primaryEmail) {
               email = primaryEmail;
             }

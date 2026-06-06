@@ -44,8 +44,15 @@ export default function WatchPage() {
   const [savingToWatchlist, setSavingToWatchlist] = useState(false);
 
   // Streaming mappings states
-  const [malsyncSites, setMalsyncSites] = useState<any>({});
-  const [anikotoEpisodes, setAnikotoEpisodes] = useState<any[]>([]);
+  interface AnikotoEpisode {
+    number?: number;
+    episode_number?: number;
+    episode_embed_id?: string;
+    embedId?: string;
+    id?: string;
+  }
+  const [malsyncSites, setMalsyncSites] = useState<Record<string, Record<string, { identifier?: string; id?: string }>>>({});
+  const [anikotoEpisodes, setAnikotoEpisodes] = useState<AnikotoEpisode[]>([]);
 
   const fetchAnimeDetails = useCallback(async () => {
     setLoading(true);
@@ -86,7 +93,7 @@ export default function WatchPage() {
   }, [animeId]);
 
   // Fetch db tags so we can check if category/status tags exist
-  const fetchDbTags = async () => {
+  const fetchDbTags = useCallback(async () => {
     try {
       const res = await fetch("/api/tags");
       if (res.ok) {
@@ -96,7 +103,7 @@ export default function WatchPage() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (animeId) {
@@ -109,7 +116,7 @@ export default function WatchPage() {
   // Auto-set the best server once mappings are fetched
   useEffect(() => {
     if (anikotoEpisodes.length > 0) {
-      const hasEp = anikotoEpisodes.find((ep: any) => ep.number === currentEpisode || ep.episode_number === currentEpisode);
+      const hasEp = anikotoEpisodes.find((ep) => ep.number === currentEpisode || ep.episode_number === currentEpisode);
       if (hasEp) {
         setActiveServer("anikoto");
         return;
@@ -157,9 +164,9 @@ export default function WatchPage() {
     {
       id: "anikoto",
       name: "Megaplay (Anikoto)",
-      available: anikotoEpisodes.length > 0 && !!anikotoEpisodes.find((ep: any) => ep.number === currentEpisode || ep.episode_number === currentEpisode),
+      available: anikotoEpisodes.length > 0 && !!anikotoEpisodes.find((ep) => ep.number === currentEpisode || ep.episode_number === currentEpisode),
       getUrl: () => {
-        const ep = anikotoEpisodes.find((ep: any) => ep.number === currentEpisode || ep.episode_number === currentEpisode);
+        const ep = anikotoEpisodes.find((ep) => ep.number === currentEpisode || ep.episode_number === currentEpisode);
         const embedId = ep?.episode_embed_id || ep?.embedId || ep?.id;
         return `https://megaplay.buzz/stream/s-2/${embedId}`;
       }
@@ -167,9 +174,9 @@ export default function WatchPage() {
     {
       id: "animepahe",
       name: "AnimePahe (MAL-Sync)",
-      available: malsyncSites.animepahe && Object.values(malsyncSites.animepahe).length > 0,
+      available: !!(malsyncSites.animepahe && Object.values(malsyncSites.animepahe).length > 0),
       getUrl: () => {
-        const pObj = Object.values(malsyncSites.animepahe)[0] as any;
+        const pObj = Object.values(malsyncSites.animepahe)[0] as { identifier?: string; id?: string } | undefined;
         const pId = pObj?.identifier || pObj?.id;
         return `https://animepahe.com/play/${pId}/${currentEpisode}`;
       }
@@ -177,9 +184,9 @@ export default function WatchPage() {
     {
       id: "animembed",
       name: "AnimEmbed (Gogoanime)",
-      available: (malsyncSites.gogoanime && Object.values(malsyncSites.gogoanime).length > 0) || (malsyncSites.Gogoanime && Object.values(malsyncSites.Gogoanime).length > 0),
+      available: !!((malsyncSites.gogoanime && Object.values(malsyncSites.gogoanime).length > 0) || (malsyncSites.Gogoanime && Object.values(malsyncSites.Gogoanime).length > 0)),
       getUrl: () => {
-        const gObj = (malsyncSites.gogoanime ? Object.values(malsyncSites.gogoanime)[0] : Object.values(malsyncSites.Gogoanime)[0]) as any;
+        const gObj = (malsyncSites.gogoanime ? Object.values(malsyncSites.gogoanime)[0] : Object.values(malsyncSites.Gogoanime)[0]) as { identifier?: string; id?: string } | undefined;
         const gId = gObj?.identifier || gObj?.id;
         return `https://animembed.cc/embed/${gId}-episode-${currentEpisode}`;
       }
