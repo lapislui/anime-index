@@ -1,294 +1,232 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import AnimeCard from "@/components/AnimeCard";
-import GameCard from "@/components/GameCard";
-import MovieCard from "@/components/MovieCard";
-import FilterPanel from "@/components/FilterPanel";
-import { useMode } from "@/context/ModeContext";
 
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-  _count?: { animes: number; games?: number };
-}
-
-interface Item {
-  id: string;
+interface JikanAnime {
+  mal_id: number;
   title: string;
-  description: string | null;
-  coverImage: string | null;
-  status: string;
-  year: number | null;
-  format: string | null;
-  genres: string | null;
-  tags: Tag[];
-  _count: { episodes?: number; chapters?: number; parts?: number };
+  title_english: string | null;
+  synopsis: string | null;
+  score: number | null;
+  type: string;
+  images: {
+    jpg: {
+      large_image_url: string;
+    };
+  };
+  genres?: { name: string }[];
 }
 
-type SortField = "updatedAt" | "title" | "createdAt";
-
-export default function Home() {
-  const { mode } = useMode();
-  
-  const [items, setItems] = useState<Item[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  
-  // Filter States
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
-  const [selectedFormat, setSelectedFormat] = useState<string>("");
-  
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortField>("updatedAt");
+export default function DiscoverPage() {
+  const [animes, setAnimes] = useState<JikanAnime[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<"top" | "seasonal" | "movies" | "search">("top");
+  const [searchVal, setSearchVal] = useState("");
+  const [activeGenres, setActiveGenres] = useState<string[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
 
-  // Reset filters when switching modes
-  useEffect(() => {
-    setSelectedGenres([]);
-    setSelectedTags([]);
-    setSelectedYear("");
-    setSelectedStatus("");
-    setSelectedFormat("");
-    setSearch("");
-  }, [mode]);
-
-  const fetchItems = useCallback(async () => {
+  const fetchAnimeList = useCallback(async (url: string) => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (selectedStatus) params.set("status", selectedStatus);
-    if (selectedFormat) params.set("format", selectedFormat);
-    if (selectedYear) params.set("year", selectedYear);
-    if (sortBy) params.set("sort", sortBy);
-    if (search) params.set("search", search);
-
+    setError("");
     try {
-      const endpoint = mode === "games" ? "/api/games" : mode === "movies" ? "/api/movies" : "/api/animes";
-      const res = await fetch(`${endpoint}?${params}`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setItems(data);
-      } else {
-        console.error("API returned non-array: ", data);
-        setItems([]);
-      }
-    } catch (error) {
-      console.error(error);
-      setItems([]);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("API Limit reached or network error.");
+      const result = await res.json();
+      const list: JikanAnime[] = result.data || [];
+      setAnimes(list);
+
+      // Extract unique genres
+      const genreSet = new Set<string>();
+      list.forEach((anime) => {
+        anime.genres?.forEach((g) => genreSet.add(g.name));
+      });
+      setAvailableGenres(Array.from(genreSet).sort().slice(0, 10));
+      setActiveGenres([]); // Reset active filters on tab/query change
+    } catch (e) {
+      console.error(e);
+      setError("Failed to fetch anime from MAL. Please wait and refresh.");
     } finally {
       setLoading(false);
     }
-  }, [mode, selectedStatus, selectedFormat, selectedYear, sortBy, search]);
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/tags")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled) {
-          if (Array.isArray(data)) {
-            setTags(data);
-          } else {
-            setTags([]);
-          }
-        }
-      })
-      .catch((e) => {
-        console.error(e);
-        if (!cancelled) setTags([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
+    if (activeTab === "top") {
+      fetchAnimeList("https://api.jikan.moe/v4/top/anime");
+    } else if (activeTab === "seasonal") {
+      fetchAnimeList("https://api.jikan.moe/v4/seasons/now");
+    } else if (activeTab === "movies") {
+      fetchAnimeList("https://api.jikan.moe/v4/anime?type=movie");
+    }
+  }, [activeTab, fetchAnimeList]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => fetchItems(), 300);
-    return () => clearTimeout(timer);
-  }, [fetchItems]);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchVal.trim()) return;
+    setActiveTab("search");
+    fetchAnimeList(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(searchVal.trim())}`);
+  };
 
-  // Compute available filters from ALL fetched items to make them dynamic and clean
-  const { availableGenres, availableYears, availableFormats } = useMemo(() => {
-    const genresSet = new Set<string>();
-    const yearsSet = new Set<number>();
-    const formatsSet = new Set<string>();
+  const toggleGenre = (genre: string) => {
+    setActiveGenres((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    );
+  };
 
-    items.forEach((item) => {
-      if (item.genres) {
-        item.genres.split(",").forEach((g) => {
-          const trimmed = g.trim();
-          if (trimmed) genresSet.add(trimmed);
-        });
-      }
-      if (item.year) {
-        yearsSet.add(item.year);
-      }
-      if (item.format) {
-        formatsSet.add(item.format);
-      }
-    });
-
-    return {
-      availableGenres: Array.from(genresSet).sort(),
-      availableYears: Array.from(yearsSet).sort((a, b) => b - a),
-      availableFormats: Array.from(formatsSet).sort(),
-    };
-  }, [items]);
-
-  // Client-side filtering for multi-select (genres and tags) to ensure perfect matching
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      // Tags matching
-      if (selectedTags.length > 0) {
-        const matchesAllTags = selectedTags.every((t) =>
-          item.tags.some((tag) => tag.name === t)
-        );
-        if (!matchesAllTags) return false;
-      }
-
-      // Genres matching
-      if (selectedGenres.length > 0) {
-        if (!item.genres) return false;
-        const itemGenresList = item.genres.split(",").map((g) => g.trim().toLowerCase());
-        const matchesAllGenres = selectedGenres.every((g) =>
-          itemGenresList.includes(g.toLowerCase())
-        );
-        if (!matchesAllGenres) return false;
-      }
-
-      return true;
-    });
-  }, [items, selectedTags, selectedGenres]);
+  // Filter animes locally based on selected genres
+  const filteredAnimes = animes.filter((anime) =>
+    activeGenres.every((genre) => anime.genres?.some((g) => g.name === genre))
+  );
 
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-accent to-accent-light bg-clip-text text-transparent sm:text-4xl">
-            {mode === "games" ? "Game Index" : mode === "movies" ? "Movie Index" : "Anime Index"}
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            {mode === "games" 
-              ? "Manage and reflect on your gaming journal, chapter-by-chapter story progression, and platform stats." 
-              : mode === "movies"
-              ? "Manage and reflect on your movie journal, part-by-part story breakdown, and watched stats."
-              : "Manage and reflect on your curated personal story journal, episode breakdowns, and seasonal stats."}
-          </p>
-        </div>
-        <Link
-          href={mode === "games" ? "/game/new" : mode === "movies" ? "/movie/new" : "/anime/new"}
-          className="glow-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-lg transition-transform hover:scale-105"
-        >
-          + Add {mode === "games" ? "Game" : mode === "movies" ? "Movie" : "Anime"} Entry
-        </Link>
+      {/* Hero Banner */}
+      <div className="relative mb-8 overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-r from-accent/10 to-accent-light/10 p-8 sm:p-12 text-center">
+        <span className="inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent border border-accent/20">
+          Global database
+        </span>
+        <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+          Discover Anime
+        </h1>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted">
+          Browse through live ratings, current seasonal rollouts, or search directly from the global MyAnimeList encyclopedia.
+        </p>
       </div>
 
-      {/* Search and Sort Row */}
-      <div className="mb-6 flex flex-col gap-3 md:flex-row">
-        <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
+      {/* Control Panel: Tabs and Search */}
+      <div className="glass-panel mb-8 flex flex-col gap-4 rounded-2xl p-5 md:flex-row md:items-center md:justify-between shadow-xl">
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "top", label: "★ Top Rated" },
+            { id: "seasonal", label: "🌸 Seasonal" },
+            { id: "movies", label: "🎬 Movies" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as "top" | "seasonal" | "movies")}
+              className={`rounded-xl px-4 py-2.5 text-xs sm:text-sm font-bold tracking-wide transition-all border ${
+                activeTab === tab.id
+                  ? "bg-accent text-slate-950 border-accent shadow-[0_0_15px_rgba(0,229,255,0.25)]"
+                  : "bg-slate-900/50 text-muted border-border/60 hover:text-foreground hover:bg-slate-900"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <form onSubmit={handleSearchSubmit} className="relative flex max-w-md flex-1">
           <input
             type="text"
-            placeholder={mode === "games" ? "Search gaming catalog..." : mode === "movies" ? "Search movie library..." : "Search anime library..."}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-border/80 bg-slate-950/50 py-2.5 pl-10 pr-4 text-xs text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300"
+            placeholder="Search global database..."
+            value={searchVal}
+            onChange={(e) => setSearchVal(e.target.value)}
+            className="w-full rounded-xl border border-border/80 bg-slate-950/50 py-2.5 pl-4 pr-10 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300"
           />
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortField)}
-            className="rounded-xl border border-border/80 bg-slate-950/50 px-4 py-2.5 text-xs text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all duration-300 cursor-pointer"
+          <button
+            type="submit"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-accent/15 px-3 py-1 text-xs font-bold text-accent border border-accent/20 hover:bg-accent hover:text-slate-950 transition-all"
           >
-            <option value="updatedAt">Recently Updated</option>
-            <option value="createdAt">Recently Added</option>
-            <option value="title">Title (A-Z)</option>
-          </select>
+            Go
+          </button>
+        </form>
+      </div>
+
+      {/* Genre Tags Filters */}
+      {availableGenres.length > 0 && (
+        <div className="glass-panel mb-8 rounded-2xl p-5 shadow-lg">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Filter by Genre</h3>
+          <div className="flex flex-wrap gap-2">
+            {availableGenres.map((genre) => {
+              const isActive = activeGenres.includes(genre);
+              return (
+                <button
+                  key={genre}
+                  onClick={() => toggleGenre(genre)}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold border transition-all ${
+                    isActive
+                      ? "bg-accent/25 border-accent text-accent shadow-[0_0_10px_rgba(0,229,255,0.1)]"
+                      : "bg-slate-900/40 border-border/40 text-muted hover:border-accent/40 hover:text-foreground"
+                  }`}
+                >
+                  {genre}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Advanced Filter Panel */}
-      <div className="mb-8">
-        <FilterPanel
-          mode={mode}
-          tags={tags}
-          availableGenres={availableGenres}
-          availableYears={availableYears}
-          availableFormats={availableFormats}
-          selectedGenres={selectedGenres}
-          setSelectedGenres={setSelectedGenres}
-          selectedTags={selectedTags}
-          setSelectedTags={setSelectedTags}
-          selectedYear={selectedYear}
-          setSelectedYear={setSelectedYear}
-          selectedStatus={selectedStatus}
-          setSelectedStatus={setSelectedStatus}
-          selectedFormat={selectedFormat}
-          setSelectedFormat={setSelectedFormat}
-        />
-      </div>
-
-      {/* Catalog Grid */}
+      {/* Content Area */}
       {loading ? (
-        <div className="py-32 text-center text-muted">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-accent border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-4 text-sm font-semibold tracking-wide text-muted">Scanning Library...</p>
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="glass-card overflow-hidden rounded-xl animate-pulse">
+              <div className="aspect-[3/4] w-full bg-slate-800" />
+              <div className="p-4 space-y-2">
+                <div className="h-4 rounded bg-slate-800 w-3/4" />
+                <div className="h-3 rounded bg-slate-800 w-1/2" />
+                <div className="h-8 rounded bg-slate-850 w-full pt-1" />
+              </div>
+            </div>
+          ))}
         </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="glass-panel rounded-2xl py-20 text-center shadow-lg border border-border/50">
-          <span className="text-5xl">{mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "🎌"}</span>
-          <p className="mt-4 text-lg font-bold text-muted">No {mode === "games" ? "game" : mode === "movies" ? "movie" : "anime"} entries match your filters</p>
-          <Link
-            href={mode === "games" ? "/game/new" : mode === "movies" ? "/movie/new" : "/anime/new"}
-            className="mt-4 inline-block text-sm font-bold text-accent hover:text-accent-light underline transition-colors"
-          >
-            Create a new entry
-          </Link>
+      ) : error ? (
+        <div className="glass-panel rounded-2xl py-24 text-center border-rose-500/20">
+          <span className="text-5xl">⚠️</span>
+          <p className="mt-4 text-base font-bold text-rose-400">{error}</p>
+        </div>
+      ) : filteredAnimes.length === 0 ? (
+        <div className="glass-panel rounded-2xl py-24 text-center">
+          <span className="text-5xl">🔍</span>
+          <p className="mt-4 text-base font-bold text-muted">No anime matches those filters</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {filteredItems.map((item) => (
-            mode === "games" ? (
-              <GameCard 
-                key={item.id} 
-                id={item.id}
-                title={item.title}
-                description={item.description}
-                coverImage={item.coverImage}
-                status={item.status}
-                tags={item.tags}
-                _count={{ chapters: item._count.chapters || 0 }}
-              />
-            ) : mode === "movies" ? (
-              <MovieCard 
-                key={item.id} 
-                id={item.id}
-                title={item.title}
-                description={item.description}
-                coverImage={item.coverImage}
-                status={item.status}
-                tags={item.tags}
-                _count={{ parts: item._count.parts || 0 }}
-              />
-            ) : (
-              <AnimeCard 
-                key={item.id} 
-                id={item.id}
-                title={item.title}
-                description={item.description}
-                coverImage={item.coverImage}
-                status={item.status}
-                tags={item.tags}
-                _count={{ episodes: item._count.episodes || 0 }}
-              />
-            )
-          ))}
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {filteredAnimes.map((anime) => {
+            const title = anime.title_english || anime.title;
+            const genresStr = anime.genres ? anime.genres.map((g) => g.name).join(", ") : "Anime";
+
+            return (
+              <div key={anime.mal_id} className="glass-card group overflow-hidden rounded-xl flex flex-col justify-between">
+                <div>
+                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={anime.images.jpg.large_image_url}
+                      alt={title}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute right-2 top-2 rounded-lg bg-slate-950/80 px-2 py-0.5 text-[10px] font-bold text-amber-400 border border-amber-500/20 backdrop-blur-md">
+                      ⭐ {anime.score || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="p-4">
+                    <h3 className="text-sm font-bold leading-snug text-foreground line-clamp-1 group-hover:text-accent transition-colors duration-300">
+                      {title}
+                    </h3>
+                    <p className="mt-0.5 text-[10px] text-muted line-clamp-1">{genresStr}</p>
+                    <p className="mt-2 text-xs text-muted leading-relaxed line-clamp-2">{anime.synopsis || "No description available."}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 pt-0">
+                  <Link
+                    href={`/watch/${anime.mal_id}`}
+                    className="glow-btn block w-full rounded-xl py-2 text-center text-xs font-extrabold uppercase tracking-wider"
+                  >
+                    Watch Now
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

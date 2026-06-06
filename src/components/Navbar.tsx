@@ -50,9 +50,9 @@ export default function Navbar() {
   };
 
   const links = [
-    { href: "/", label: "Library", icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📚" },
+    { href: "/", label: "Discover", icon: "🔍" },
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
-    { href: "/discover", label: "Discover", icon: "🔍" },
+    { href: "/library", label: "Library", icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📚" },
     { href: "/organize", label: "Organize", icon: "🏷️" },
     { href: "/news", label: "News", icon: "📰" },
   ];
