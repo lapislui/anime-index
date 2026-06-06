@@ -12,6 +12,7 @@ export interface SessionUser {
   shareMovies: boolean;
   shareActivity: boolean;
   shareTags: boolean;
+  shareLibrary: boolean;
   googleId?: string | null;
   githubId?: string | null;
   microsoftId?: string | null;
@@ -40,6 +41,7 @@ export async function getCurrentUser(request: NextRequest): Promise<SessionUser 
             shareMovies: true,
             shareActivity: true,
             shareTags: true,
+            shareLibrary: true,
             googleId: true,
             githubId: true,
             microsoftId: true,

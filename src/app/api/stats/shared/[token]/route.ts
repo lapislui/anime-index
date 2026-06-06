@@ -119,6 +119,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         shareMovies: user.shareMovies,
         shareActivity: user.shareActivity,
         shareTags: user.shareTags,
+        shareLibrary: user.shareLibrary,
       });
     } else if (mode === "games") {
       const totalGames = await db.game.count({ where: { userId: user.id } });
@@ -186,6 +187,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         shareMovies: user.shareMovies,
         shareActivity: user.shareActivity,
         shareTags: user.shareTags,
+        shareLibrary: user.shareLibrary,
       });
     }
 
@@ -237,6 +239,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       shareMovies: user.shareMovies,
       shareActivity: user.shareActivity,
       shareTags: user.shareTags,
+      shareLibrary: user.shareLibrary,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

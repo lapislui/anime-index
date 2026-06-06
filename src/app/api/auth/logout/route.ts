@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       shareMovies: user.shareMovies,
       shareActivity: user.shareActivity,
       shareTags: user.shareTags,
+      shareLibrary: user.shareLibrary,
       googleConnected: !!user.googleId,
       githubConnected: !!user.githubId,
       microsoftConnected: !!user.microsoftId,

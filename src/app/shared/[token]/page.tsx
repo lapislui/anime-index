@@ -48,6 +48,7 @@ interface SharedStats {
   shareMovies?: boolean;
   shareActivity?: boolean;
   shareTags?: boolean;
+  shareLibrary?: boolean;
 }
 
 interface LibraryItem {
@@ -202,6 +203,12 @@ export default function SharedDashboardPage({
       fetchLibrary();
     }
   }, [tab, fetchLibrary]);
+
+  useEffect(() => {
+    if (stats && stats.shareLibrary === false && tab === "library") {
+      setTab("dashboard");
+    }
+  }, [stats, tab]);
 
   // Handle Mode Change
   const handleModeChange = (newMode: string) => {
@@ -386,13 +393,15 @@ export default function SharedDashboardPage({
           >
             <span>📊</span> Dashboard
           </button>
-          <button
-            onClick={() => setTab("library")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${tab === "library" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
-              }`}
-          >
-            <span>📚</span> Library
-          </button>
+          {stats.shareLibrary !== false && (
+            <button
+              onClick={() => setTab("library")}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${tab === "library" ? "bg-accent/15 text-accent border border-accent/20" : "text-muted hover:text-foreground"
+                }`}
+            >
+              <span>📚</span> Library
+            </button>
+          )}
         </div>
       )}
 

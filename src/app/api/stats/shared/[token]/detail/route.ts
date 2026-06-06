@@ -23,6 +23,10 @@ export async function GET(
       return NextResponse.json({ error: "Dashboard not found or not shared" }, { status: 404 });
     }
 
+    if (!user.shareLibrary) {
+      return NextResponse.json({ error: "Library is private" }, { status: 403 });
+    }
+
     if (mode === "anime" && !user.shareAnime) {
       return NextResponse.json({ error: "Anime details are private" }, { status: 403 });
     }

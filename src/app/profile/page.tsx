@@ -15,6 +15,7 @@ interface SessionUser {
   shareMovies: boolean;
   shareActivity: boolean;
   shareTags: boolean;
+  shareLibrary: boolean;
   googleConnected: boolean;
   githubConnected: boolean;
   microsoftConnected: boolean;
@@ -247,7 +248,7 @@ function ProfilePageInner() {
   }
 
   // Sharing preference toggle
-  async function toggleSharingPreference(field: "shareDashboard" | "shareAnime" | "shareGames" | "shareMovies" | "shareActivity" | "shareTags") {
+  async function toggleSharingPreference(field: "shareDashboard" | "shareAnime" | "shareGames" | "shareMovies" | "shareActivity" | "shareTags" | "shareLibrary") {
     if (!user) return;
     setShareLoading(true);
     const newValue = !user[field];
@@ -627,6 +628,7 @@ function ProfilePageInner() {
                   { field: "shareMovies", label: "Share Movies", desc: "Show movie index, parts, & watch records" },
                   { field: "shareActivity", label: "Share Activity Feed", desc: "Show recent breakdown entries updates log" },
                   { field: "shareTags", label: "Share Genre Tags", desc: "Show populated genre metrics & category list" },
+                  { field: "shareLibrary", label: "Share Library Index", desc: "Show complete library collections index tab" },
                 ] as const).map((item) => {
                   const val = !!(user && user[item.field]);
                   return (

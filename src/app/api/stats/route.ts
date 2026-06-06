@@ -199,6 +199,7 @@ export async function PATCH(request: NextRequest) {
       shareMovies?: boolean;
       shareActivity?: boolean;
       shareTags?: boolean;
+      shareLibrary?: boolean;
     } = {};
 
     if (body.shareDashboard !== undefined) dataToUpdate.shareDashboard = !!body.shareDashboard;
@@ -207,6 +208,7 @@ export async function PATCH(request: NextRequest) {
     if (body.shareMovies !== undefined) dataToUpdate.shareMovies = !!body.shareMovies;
     if (body.shareActivity !== undefined) dataToUpdate.shareActivity = !!body.shareActivity;
     if (body.shareTags !== undefined) dataToUpdate.shareTags = !!body.shareTags;
+    if (body.shareLibrary !== undefined) dataToUpdate.shareLibrary = !!body.shareLibrary;
 
     const updated = await db.user.update({
       where: { id: user.id },
@@ -221,6 +223,7 @@ export async function PATCH(request: NextRequest) {
       shareMovies: updated.shareMovies,
       shareActivity: updated.shareActivity,
       shareTags: updated.shareTags,
+      shareLibrary: updated.shareLibrary,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

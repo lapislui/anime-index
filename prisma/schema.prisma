@@ -35,6 +35,7 @@ model User {
   shareMovies    Boolean   @default(true)
   shareActivity  Boolean   @default(true)
   shareTags      Boolean   @default(true)
+  shareLibrary   Boolean   @default(true)
   following      Follow[]  @relation("Following")
   followers      Follow[]  @relation("Followers")
 }
