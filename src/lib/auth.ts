@@ -7,6 +7,11 @@ export interface SessionUser {
   email: string;
   shareDashboard: boolean;
   shareToken: string;
+  googleId?: string | null;
+  githubId?: string | null;
+  microsoftId?: string | null;
+  discordId?: string | null;
+  facebookId?: string | null;
 }
 
 // Get the current user based on session token in cookies
@@ -24,6 +29,11 @@ export async function getCurrentUser(request: NextRequest): Promise<SessionUser 
             email: true,
             shareDashboard: true,
             shareToken: true,
+            googleId: true,
+            githubId: true,
+            microsoftId: true,
+            discordId: true,
+            facebookId: true,
           },
         },
       },

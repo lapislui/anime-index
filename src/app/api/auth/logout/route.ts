@@ -29,5 +29,17 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ user: null });
   }
-  return NextResponse.json({ user: { id: user.id, email: user.email, shareDashboard: user.shareDashboard, shareToken: user.shareToken } });
+  return NextResponse.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      shareDashboard: user.shareDashboard,
+      shareToken: user.shareToken,
+      googleConnected: !!user.googleId,
+      githubConnected: !!user.githubId,
+      microsoftConnected: !!user.microsoftId,
+      discordConnected: !!user.discordId,
+      facebookConnected: !!user.facebookId,
+    }
+  });
 }

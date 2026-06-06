@@ -23,6 +23,11 @@ model User {
   movies         Movie[]
   passkeys       Passkey[]
   sessions       Session[]
+  googleId       String?   @unique
+  githubId       String?   @unique
+  microsoftId    String?   @unique
+  discordId      String?   @unique
+  facebookId     String?   @unique
   shareDashboard Boolean   @default(false)
   shareToken     String    @unique @default(cuid())
   following      Follow[]  @relation("Following")
