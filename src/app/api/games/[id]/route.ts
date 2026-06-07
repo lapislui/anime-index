@@ -18,8 +18,17 @@ export async function GET(
         id,
         OR: [
           { userId: user.id },
-          { playedWithId: user.id }
-        ]
+          { playedWithId: user.id },
+          {
+            collections: {
+              some: {
+                members: {
+                  some: { userId: user.id },
+                },
+              },
+            },
+          },
+        ],
       },
       include: {
         tags: true,

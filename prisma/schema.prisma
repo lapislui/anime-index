@@ -39,6 +39,10 @@ model User {
   shareLibrary   Boolean   @default(true)
   following      Follow[]  @relation("Following")
   followers      Follow[]  @relation("Followers")
+  createdCollections            Collection[]           @relation("CreatedCollections")
+  collectionMemberships       CollectionMember[]     @relation("CollectionMemberships")
+  sentCollectionInvitations   CollectionInvitation[] @relation("SentCollectionInvitations")
+  receivedCollectionInvitations CollectionInvitation[] @relation("ReceivedCollectionInvitations")
 }
 
 model Follow {
@@ -84,6 +88,7 @@ model Anime {
   tags        Tag[]     @relation("AnimeToTag")
   userId      String?
   user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collections Collection[] @relation("CollectionToAnime")
 }
 
 model Episode {
@@ -140,6 +145,7 @@ model Game {
   playedWith   User?     @relation("PlayedWith", fields: [playedWithId], references: [id], onDelete: SetNull)
   tags        Tag[]     @relation("GameToTag")
   chapters    Chapter[]
+  collections Collection[] @relation("CollectionToGame")
 }
 
 model Chapter {
@@ -182,6 +188,7 @@ model Movie {
   parts       MoviePart[]
   userId      String
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collections Collection[] @relation("CollectionToMovie")
 }
 
 model MoviePart {
@@ -207,5 +214,46 @@ model MovieMedia {
   moviePartId String
   moviePart   MoviePart @relation(fields: [moviePartId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
+}
+
+model Collection {
+  id          String                 @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  creatorId   String
+  creator     User                   @relation("CreatedCollections", fields: [creatorId], references: [id], onDelete: Cascade)
+  members     CollectionMember[]
+  animes      Anime[]                @relation("CollectionToAnime")
+  games       Game[]                 @relation("CollectionToGame")
+  movies      Movie[]                @relation("CollectionToMovie")
+  invitations CollectionInvitation[]
+}
+
+model CollectionMember {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation("CollectionMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt     DateTime   @default(now())
+  role         String     @default("member") // "creator", "member"
+
+  @@unique([collectionId, userId])
+}
+
+model CollectionInvitation {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  inviterId    String
+  inviter      User       @relation("SentCollectionInvitations", fields: [inviterId], references: [id], onDelete: Cascade)
+  inviteeId    String
+  invitee      User       @relation("ReceivedCollectionInvitations", fields: [inviteeId], references: [id], onDelete: Cascade)
+  status       String     @default("pending") // "pending", "accepted", "declined"
+  createdAt    DateTime   @default(now())
+
+  @@unique([collectionId, inviteeId])
 }
 

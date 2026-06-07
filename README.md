@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Setup
+
+Before running the application, you need to configure your environment variables. Please refer to [ENV_SETUP.md](ENV_SETUP.md) for full setup instructions.
+
+1. Copy the example configuration:
+   ```bash
+   cp .env.example .env
+   ```
+2. Open `.env` and fill in the required details (such as `DATABASE_URL`).
+
 ## Getting Started
 
 First, run the development server:

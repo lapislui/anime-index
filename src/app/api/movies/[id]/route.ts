@@ -14,7 +14,21 @@ export async function GET(
 
     const { id } = await params;
     const movie = await db.movie.findFirst({
-      where: { id, userId: user.id },
+      where: {
+        id,
+        OR: [
+          { userId: user.id },
+          {
+            collections: {
+              some: {
+                members: {
+                  some: { userId: user.id },
+                },
+              },
+            },
+          },
+        ],
+      },
       include: {
         tags: true,
         parts: {

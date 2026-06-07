@@ -28,6 +28,7 @@ interface Tag {
 
 interface Game {
   id: string;
+  userId: string;
   title: string;
   description: string | null;
   coverImage: string | null;
@@ -57,6 +58,7 @@ export default function GameDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [game, setGame] = useState<Game | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showChapterForm, setShowChapterForm] = useState(false);
   const [chapNumber, setChapNumber] = useState(1);
@@ -66,6 +68,12 @@ export default function GameDetailPage() {
 
   const fetchGame = async () => {
     try {
+      const userRes = await fetch("/api/auth/logout");
+      const userData = await userRes.json();
+      if (userData?.user) {
+        setCurrentUser(userData.user);
+      }
+
       const res = await fetch(`/api/games/${params.id}`);
       if (!res.ok) {
         router.push("/");
@@ -163,20 +171,22 @@ export default function GameDetailPage() {
         <div className="flex-1">
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-3xl font-extrabold text-foreground">{game.title}</h1>
-            <div className="flex gap-2">
-              <Link
-                href={`/game/${game.id}/edit`}
-                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-white/5 transition-all"
-              >
-                Edit
-              </Link>
-              <button
-                onClick={handleDeleteGame}
-                className="rounded-md border border-red-500/20 px-3 py-1.5 text-sm text-red-500 hover:bg-red-500/5 transition-all"
-              >
-                Delete
-              </button>
-            </div>
+            {currentUser?.id === game.userId && (
+              <div className="flex gap-2">
+                <Link
+                  href={`/game/${game.id}/edit`}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-white/5 transition-all"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={handleDeleteGame}
+                  className="rounded-md border border-red-500/20 px-3 py-1.5 text-sm text-red-500 hover:bg-red-500/5 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -230,12 +240,14 @@ export default function GameDetailPage() {
       {/* Chapters Section */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground">Gaming Journal logs</h2>
-        <button
-          onClick={() => setShowChapterForm(!showChapterForm)}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-slate-950 transition-all hover:scale-[1.02]"
-        >
-          {showChapterForm ? "Cancel" : "+ Add Journal Entry"}
-        </button>
+        {currentUser?.id === game.userId && (
+          <button
+            onClick={() => setShowChapterForm(!showChapterForm)}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-slate-950 transition-all hover:scale-[1.02]"
+          >
+            {showChapterForm ? "Cancel" : "+ Add Journal Entry"}
+          </button>
+        )}
       </div>
 
       {/* New Chapter Form */}

@@ -28,6 +28,7 @@ interface Tag {
 
 interface Movie {
   id: string;
+  userId: string;
   title: string;
   description: string | null;
   coverImage: string | null;
@@ -52,6 +53,7 @@ export default function MovieDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [movie, setMovie] = useState<Movie | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPartForm, setShowPartForm] = useState(false);
   const [partNumber, setPartNumber] = useState(1);
@@ -61,6 +63,12 @@ export default function MovieDetailPage() {
 
   const fetchMovie = async () => {
     try {
+      const userRes = await fetch("/api/auth/logout");
+      const userData = await userRes.json();
+      if (userData?.user) {
+        setCurrentUser(userData.user);
+      }
+
       const res = await fetch(`/api/movies/${params.id}`);
       if (!res.ok) {
         router.push("/");
@@ -158,20 +166,22 @@ export default function MovieDetailPage() {
         <div className="flex-1">
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-3xl font-extrabold text-foreground">{movie.title}</h1>
-            <div className="flex gap-2">
-              <Link
-                href={`/movie/${movie.id}/edit`}
-                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-white/5 transition-all"
-              >
-                Edit
-              </Link>
-              <button
-                onClick={handleDeleteMovie}
-                className="rounded-md border border-red-500/20 px-3 py-1.5 text-sm text-red-500 hover:bg-red-500/5 transition-all"
-              >
-                Delete
-              </button>
-            </div>
+            {currentUser?.id === movie.userId && (
+              <div className="flex gap-2">
+                <Link
+                  href={`/movie/${movie.id}/edit`}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-white/5 transition-all"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={handleDeleteMovie}
+                  className="rounded-md border border-red-500/20 px-3 py-1.5 text-sm text-red-500 hover:bg-red-500/5 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -220,12 +230,14 @@ export default function MovieDetailPage() {
       {/* Parts Section */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground">Movie Breakdown Logs</h2>
-        <button
-          onClick={() => setShowPartForm(!showPartForm)}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-slate-950 transition-all hover:scale-[1.02]"
-        >
-          {showPartForm ? "Cancel" : "+ Add Part Breakdown"}
-        </button>
+        {currentUser?.id === movie.userId && (
+          <button
+            onClick={() => setShowPartForm(!showPartForm)}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-slate-950 transition-all hover:scale-[1.02]"
+          >
+            {showPartForm ? "Cancel" : "+ Add Part Breakdown"}
+          </button>
+        )}
       </div>
 
       {/* New Part Form */}
