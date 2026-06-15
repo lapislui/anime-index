@@ -198,12 +198,38 @@ export default function LibraryPage() {
               : "Manage and reflect on your curated personal story journal, episode breakdowns, and seasonal stats."}
           </p>
         </div>
-        <Link
-          href={mode === "games" ? "/game/new" : mode === "movies" ? "/movie/new" : "/anime/new"}
-          className="glow-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-lg transition-transform hover:scale-105"
-        >
-          + Add {mode === "games" ? "Game" : mode === "movies" ? "Movie" : "Anime"} Entry
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          {mode === "games" && (
+            <>
+              <a
+                href="https://www.nexusgamelauncher.com/#"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-slate-950/30 hover:bg-slate-900/50 px-4 py-2.5 text-xs font-bold text-muted hover:text-foreground transition-all duration-300 shadow-sm hover:border-accent/20 hover:scale-105"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://www.nexusgamelauncher.com/assets/img/nexus-logo-32.png"
+                  alt="Nexus"
+                  className="w-4 h-4 object-contain rounded"
+                />
+                Nexus Launcher
+              </a>
+              <Link
+                href="/library/import"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-slate-950/50 hover:bg-slate-900/50 px-5 py-2.5 text-sm font-bold text-foreground transition-all duration-300 shadow-md hover:border-accent/30 hover:scale-105"
+              >
+                📥 Import from Nexus
+              </Link>
+            </>
+          )}
+          <Link
+            href={mode === "games" ? "/game/new" : mode === "movies" ? "/movie/new" : "/anime/new"}
+            className="glow-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-lg transition-transform hover:scale-105"
+          >
+            + Add {mode === "games" ? "Game" : mode === "movies" ? "Movie" : "Anime"} Entry
+          </Link>
+        </div>
       </div>
 
       {/* Search and Sort Row */}
