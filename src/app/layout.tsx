@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import RouteGuard from "@/components/RouteGuard";
 import { ModeProvider } from "@/context/ModeContext";
+import ScrollProvider from "@/components/ScrollProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,12 +33,14 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <ModeProvider>
-          <Navbar />
-          <RouteGuard>
-            <main className="flex-1 w-full">
-              {children}
-            </main>
-          </RouteGuard>
+          <ScrollProvider>
+            <Navbar />
+            <RouteGuard>
+              <main className="flex-1 w-full">
+                {children}
+              </main>
+            </RouteGuard>
+          </ScrollProvider>
         </ModeProvider>
         <footer className="border-t border-border bg-slate-950/40 py-6 text-center text-xs text-muted">
           <p>&copy; {new Date().getFullYear()} ANIMEVERSE. Created with premium aesthetics. Powered by Jikan API.</p>

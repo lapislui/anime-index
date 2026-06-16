@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
 
 interface JikanAnime {
   mal_id: number;
@@ -26,6 +28,7 @@ export default function DiscoverPage() {
   const [searchVal, setSearchVal] = useState("");
   const [activeGenres, setActiveGenres] = useState<string[]>([]);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchAnimeList = useCallback(async (url: string) => {
     setLoading(true);
@@ -80,10 +83,43 @@ export default function DiscoverPage() {
     activeGenres.every((genre) => anime.genres?.some((g) => g.name === genre))
   );
 
+  // Initial entrance animations for Hero, Filters
+  useGSAP(() => {
+    gsap.fromTo(".hero-banner", 
+      { opacity: 0, y: -30 }, 
+      { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }
+    );
+    gsap.fromTo(".control-panel", 
+      { opacity: 0, y: 20 }, 
+      { opacity: 1, y: 0, duration: 0.6, delay: 0.2, ease: "power3.out" }
+    );
+    gsap.fromTo(".genre-panel", 
+      { opacity: 0, y: 20 }, 
+      { opacity: 1, y: 0, duration: 0.6, delay: 0.3, ease: "power3.out" }
+    );
+  }, { scope: containerRef });
+
+  // Whenever the anime list updates or stops loading, animate the cards
+  useGSAP(() => {
+    if (!loading && filteredAnimes.length > 0) {
+      gsap.fromTo(".anime-card", 
+        { opacity: 0, y: 30, scale: 0.95 }, 
+        { 
+          opacity: 1, 
+          y: 0, 
+          scale: 1, 
+          duration: 0.5, 
+          stagger: 0.04, 
+          ease: "power2.out" 
+        }
+      );
+    }
+  }, { dependencies: [loading, filteredAnimes.length], scope: containerRef });
+
   return (
-    <div className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div ref={containerRef} className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Hero Banner */}
-      <div className="relative mb-8 overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-r from-accent/10 to-accent-light/10 p-8 sm:p-12 text-center">
+      <div className="hero-banner relative mb-8 overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-r from-accent/10 to-accent-light/10 p-8 sm:p-12 text-center">
         <span className="inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent border border-accent/20">
           Global database
         </span>
@@ -96,7 +132,7 @@ export default function DiscoverPage() {
       </div>
 
       {/* Control Panel: Tabs and Search */}
-      <div className="glass-panel mb-8 flex flex-col gap-4 rounded-2xl p-5 md:flex-row md:items-center md:justify-between shadow-xl">
+      <div className="control-panel glass-panel mb-8 flex flex-col gap-4 rounded-2xl p-5 md:flex-row md:items-center md:justify-between shadow-xl">
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
           {[
@@ -138,7 +174,7 @@ export default function DiscoverPage() {
 
       {/* Genre Tags Filters */}
       {availableGenres.length > 0 && (
-        <div className="glass-panel mb-8 rounded-2xl p-5 shadow-lg">
+        <div className="genre-panel glass-panel mb-8 rounded-2xl p-5 shadow-lg">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Filter by Genre</h3>
           <div className="flex flex-wrap gap-2">
             {availableGenres.map((genre) => {
@@ -192,7 +228,7 @@ export default function DiscoverPage() {
             const genresStr = anime.genres ? anime.genres.map((g) => g.name).join(", ") : "Anime";
 
             return (
-              <div key={anime.mal_id} className="glass-card group overflow-hidden rounded-xl flex flex-col justify-between">
+              <div key={anime.mal_id} className="anime-card glass-card group overflow-hidden rounded-xl flex flex-col justify-between">
                 <div>
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

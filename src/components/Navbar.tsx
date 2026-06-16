@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMode } from "@/context/ModeContext";
 import { useState, useEffect, useRef } from "react";
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -12,6 +14,28 @@ export default function Navbar() {
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const dropdownMenuRef = useRef<HTMLDivElement>(null);
+
+  // Initial header entrance animation
+  useGSAP(() => {
+    gsap.fromTo(
+      navRef.current,
+      { y: -80, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.8, ease: "power4.out" }
+    );
+  }, { scope: navRef });
+
+  // Animate dropdown
+  useEffect(() => {
+    if (dropdownOpen && dropdownMenuRef.current) {
+      gsap.fromTo(
+        dropdownMenuRef.current,
+        { scale: 0.9, opacity: 0, y: -10 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.25, ease: "back.out(1.5)" }
+      );
+    }
+  }, [dropdownOpen]);
 
   // Fetch logged-in user profile on load / pathname changes
   useEffect(() => {
@@ -70,7 +94,7 @@ export default function Navbar() {
   });
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-slate-950/80 backdrop-blur-md">
+    <nav ref={navRef} className="sticky top-0 z-50 w-full border-b border-border bg-slate-950/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 py-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         {/* Logo and Mode Switcher */}
         <div className="flex items-center justify-between gap-4">
@@ -158,7 +182,7 @@ export default function Navbar() {
                 <span className="hidden md:inline max-w-[120px] truncate">{user.email}</span>
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-slate-950/95 p-2 shadow-2xl backdrop-blur-md z-50 animate-in fade-in-50 slide-in-from-top-1">
+                <div ref={dropdownMenuRef} className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-slate-950/95 p-2 shadow-2xl backdrop-blur-md z-50">
                   <div className="px-3 py-2 text-xs text-muted border-b border-border/40 truncate">
                     {user.email}
                   </div>

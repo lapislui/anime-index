@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
 import AnimeCard from "@/components/AnimeCard";
 import GameCard from "@/components/GameCard";
 import MovieCard from "@/components/MovieCard";
@@ -11,6 +13,7 @@ import { useMode } from "@/context/ModeContext";
 interface Tag {
   id: string;
   name: string;
+  type: string;
   color: string;
   _count?: { animes: number; games?: number };
 }
@@ -36,6 +39,14 @@ export default function LibraryPage() {
   
   const [items, setItems] = useState<Item[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Bulk Actions states
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkTagAction, setBulkTagAction] = useState<"add_tags" | "remove_tags" >("add_tags");
+  const [selectedBulkTags, setSelectedBulkTags] = useState<string[]>([]);
   
   // Filter States
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -61,7 +72,56 @@ export default function LibraryPage() {
     setSelectedFormat("");
     setSelectedCollaborator("");
     setSearch("");
+    setIsBulkMode(false);
+    setSelectedIds([]);
+    setBulkStatus("");
+    setSelectedBulkTags([]);
   }, [mode]);
+
+  const handleBulkAction = async (action: "delete" | "status" | "add_tags" | "remove_tags", payload?: any) => {
+    if (selectedIds.length === 0) return;
+    if (action === "delete" && !confirm(`Are you sure you want to delete these ${selectedIds.length} items?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/library/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedIds,
+          mode,
+          action,
+          payload,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to execute bulk action");
+      
+      setSelectedIds([]);
+      setIsBulkMode(false);
+      setBulkStatus("");
+      setSelectedBulkTags([]);
+      fetchItems();
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong executing bulk action.");
+    }
+  };
+
+  const handleSelect = (id: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id)
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredItems.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredItems.map(item => item.id));
+    }
+  };
 
   useEffect(() => {
     fetch("/api/friends")
@@ -182,10 +242,35 @@ export default function LibraryPage() {
     });
   }, [items, selectedTags, selectedGenres]);
 
+  // Entrance animations for title/filters on initial mount
+  useGSAP(() => {
+    gsap.fromTo(".library-header", 
+      { opacity: 0, y: -20 }, 
+      { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }
+    );
+  }, { scope: containerRef });
+
+  // Whenever items list updates or stops loading, stagger the grid items
+  useGSAP(() => {
+    if (!loading && filteredItems.length > 0) {
+      gsap.fromTo(".library-grid > *", 
+        { opacity: 0, y: 30, scale: 0.95 }, 
+        { 
+          opacity: 1, 
+          y: 0, 
+          scale: 1, 
+          duration: 0.5, 
+          stagger: 0.04, 
+          ease: "power2.out" 
+        }
+      );
+    }
+  }, { dependencies: [loading, filteredItems.length, mode], scope: containerRef });
+
   return (
-    <div className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div ref={containerRef} className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-6">
+      <div className="library-header mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-accent to-accent-light bg-clip-text text-transparent sm:text-4xl">
             {mode === "games" ? "Game Index" : mode === "movies" ? "Movie Index" : "Anime Index"}
@@ -223,6 +308,15 @@ export default function LibraryPage() {
               </Link>
             </>
           )}
+          <button
+            onClick={() => {
+              setIsBulkMode(!isBulkMode);
+              setSelectedIds([]);
+            }}
+            className={`inline-flex items-center gap-2 rounded-xl border border-border bg-slate-950/50 hover:bg-slate-900/50 px-5 py-2.5 text-sm font-bold transition-all duration-300 shadow-md hover:scale-105 ${isBulkMode ? 'border-accent text-accent' : 'text-foreground hover:border-accent/30'}`}
+          >
+            {isBulkMode ? "Cancel Selection" : "Bulk Actions"}
+          </button>
           <Link
             href={mode === "games" ? "/game/new" : mode === "movies" ? "/movie/new" : "/anime/new"}
             className="glow-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-lg transition-transform hover:scale-105"
@@ -299,7 +393,7 @@ export default function LibraryPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="library-grid grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {filteredItems.map((item) => (
             mode === "games" ? (
               <GameCard 
@@ -312,6 +406,9 @@ export default function LibraryPage() {
                 tags={item.tags}
                 _count={{ chapters: item._count.chapters || 0 }}
                 playedWith={item.playedWith}
+                selectable={isBulkMode}
+                selected={selectedIds.includes(item.id)}
+                onSelect={handleSelect}
               />
             ) : mode === "movies" ? (
               <MovieCard 
@@ -323,6 +420,9 @@ export default function LibraryPage() {
                 status={item.status}
                 tags={item.tags}
                 _count={{ parts: item._count.parts || 0 }}
+                selectable={isBulkMode}
+                selected={selectedIds.includes(item.id)}
+                onSelect={handleSelect}
               />
             ) : (
               <AnimeCard 
@@ -334,9 +434,120 @@ export default function LibraryPage() {
                 status={item.status}
                 tags={item.tags}
                 _count={{ episodes: item._count.episodes || 0 }}
+                selectable={isBulkMode}
+                selected={selectedIds.includes(item.id)}
+                onSelect={handleSelect}
               />
             )
           ))}
+        </div>
+      )}
+
+      {/* Bulk Action Panel */}
+      {isBulkMode && (
+        <div className="fixed bottom-6 left-1/2 z-50 w-full max-w-4xl -translate-x-1/2 px-4 animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
+          <div className="glass-panel flex flex-col gap-4 rounded-2xl p-4 shadow-2xl border-accent/20 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-accent">
+                {selectedIds.length} Selected
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={toggleSelectAll}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-slate-850 border border-border/60 transition-all cursor-pointer"
+                >
+                  {selectedIds.length === filteredItems.length ? "Deselect All" : "Select All"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Status Update */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={bulkStatus}
+                  onChange={(e) => setBulkStatus(e.target.value)}
+                  className="rounded-lg border border-border/80 bg-slate-950 px-3 py-1.5 text-xs text-foreground focus:border-accent focus:outline-none transition-all cursor-pointer"
+                >
+                  <option value="">Update Status...</option>
+                  {mode === "games" ? (
+                    <>
+                      <option value="playing">Playing</option>
+                      <option value="played">Played</option>
+                      <option value="backlog">Backlog</option>
+                      <option value="cant_play">Can't Play</option>
+                    </>
+                  ) : mode === "movies" ? (
+                    <>
+                      <option value="watching">Watching</option>
+                      <option value="completed">Watched</option>
+                      <option value="dropped">Dropped</option>
+                      <option value="planned">Plan to Watch</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="watching">Watching</option>
+                      <option value="completed">Completed</option>
+                      <option value="dropped">Dropped</option>
+                      <option value="planned">Planned</option>
+                    </>
+                  )}
+                </select>
+                <button
+                  disabled={!bulkStatus || selectedIds.length === 0}
+                  onClick={() => handleBulkAction("status", bulkStatus)}
+                  className="rounded-lg bg-accent/20 border border-accent/30 px-3 py-1.5 text-xs font-bold text-accent hover:bg-accent hover:text-slate-950 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
+
+              <div className="h-6 w-px bg-border/40 hidden md:block" />
+
+              {/* Tag Action */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={bulkTagAction}
+                  onChange={(e) => setBulkTagAction(e.target.value as "add_tags" | "remove_tags")}
+                  className="rounded-lg border border-border/80 bg-slate-950 px-3 py-1.5 text-xs text-foreground focus:border-accent focus:outline-none transition-all cursor-pointer"
+                >
+                  <option value="add_tags">Add Tags</option>
+                  <option value="remove_tags">Remove Tags</option>
+                </select>
+                <select
+                  multiple
+                  value={selectedBulkTags}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    setSelectedBulkTags(values);
+                  }}
+                  className="max-h-[34px] rounded-lg border border-border/80 bg-slate-950 px-3 py-1 text-xs text-foreground focus:border-accent focus:outline-none transition-all cursor-pointer overflow-y-auto"
+                >
+                  {tags.filter(t => t.type === (mode === "games" ? "game" : mode === "movies" ? "movie" : "anime")).map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                  ))}
+                </select>
+                <button
+                  disabled={selectedBulkTags.length === 0 || selectedIds.length === 0}
+                  onClick={() => handleBulkAction(bulkTagAction, selectedBulkTags)}
+                  className="rounded-lg bg-accent/20 border border-accent/30 px-3 py-1.5 text-xs font-bold text-accent hover:bg-accent hover:text-slate-950 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
+
+              <div className="h-6 w-px bg-border/40 hidden md:block" />
+
+              {/* Delete */}
+              <button
+                disabled={selectedIds.length === 0}
+                onClick={() => handleBulkAction("delete")}
+                className="rounded-lg bg-rose-500/20 border border-rose-500/30 px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

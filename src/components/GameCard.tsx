@@ -18,6 +18,9 @@ interface GameCardProps {
   tags: Tag[];
   _count: { chapters: number };
   playedWith?: { email: string } | null;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: (id: string, checked: boolean) => void;
 }
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -40,14 +43,34 @@ export default function GameCard({
   tags,
   _count,
   playedWith,
+  selectable,
+  selected,
+  onSelect,
 }: GameCardProps) {
   const statusInfo = statusLabels[status] || statusLabels.playing;
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (selectable) {
+      e.preventDefault();
+      onSelect?.(id, !selected);
+    }
+  };
+
   return (
-    <Link href={`/game/${id}`} className="block">
-      <div className="glass-card group overflow-hidden rounded-xl h-full flex flex-col">
+    <Link href={selectable ? "#" : `/game/${id}`} onClick={handleClick} className="block">
+      <div className={`glass-card group overflow-hidden rounded-xl h-full flex flex-col ${selected ? 'border-accent ring-1 ring-accent/30' : ''}`}>
         {/* Cover Image */}
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-accent/10 to-accent-light/10">
+          {selectable && (
+            <div className="absolute left-2 top-2 z-10" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={(e) => onSelect?.(id, e.target.checked)}
+                className="h-5 w-5 rounded border-border bg-slate-900 text-accent focus:ring-accent accent-accent cursor-pointer"
+              />
+            </div>
+          )}
           {coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
