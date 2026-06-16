@@ -81,6 +81,7 @@ export default function Navbar() {
     { href: "/friends", label: "Friends", icon: "👥" },
     { href: "/organize", label: "Organize", icon: "🏷️" },
     { href: "/news", label: "News", icon: "📰" },
+    { href: "/changelog", label: "Changelog", icon: "🚀" },
   ];
 
   const filteredLinks = links.filter((link) => {
