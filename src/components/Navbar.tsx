@@ -86,11 +86,6 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -107,6 +102,7 @@ export default function Navbar() {
     { href: "/", label: "Discover", icon: "🔍" },
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
     { href: "/library", label: "Library", icon: mode === "games" ? "🎮" : mode === "movies" ? "🎬" : "📚" },
+    { href: "/pc-spec-report", label: "PC Specs", icon: "🖥️" },
     { href: "/collections", label: "Collections", icon: "📂" },
     { href: "/friends", label: "Friends", icon: "👥" },
     { href: "/organize", label: "Organize", icon: "🏷️" },
@@ -116,6 +112,9 @@ export default function Navbar() {
 
   const filteredLinks = links.filter((link) => {
     if (mode !== "anime" && (link.label === "Discover" || link.label === "News")) {
+      return false;
+    }
+    if (mode !== "games" && link.label === "PC Specs") {
       return false;
     }
     if ((link.label === "Friends" || link.label === "Collections") && !user) {
@@ -251,6 +250,7 @@ export default function Navbar() {
               {user && (
                 <Link
                   href="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-slate-900/40 text-xs hover:border-accent/35 transition-colors"
                   title="Profile Settings"
                 >
@@ -284,6 +284,7 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
                 className={`mobile-nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-xs font-bold border transition-all duration-300 ${
                   isActive
                     ? "text-accent bg-accent/5 border-accent/15 shadow-[0_0_15px_rgba(0,229,255,0.05)]"
@@ -313,6 +314,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/login"
+              onClick={() => setMobileMenuOpen(false)}
               className="mobile-nav-link flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-xs font-bold text-slate-950 hover:opacity-90 transition-all duration-300"
             >
               <span>🔑</span> Login

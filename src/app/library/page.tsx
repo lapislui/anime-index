@@ -33,6 +33,7 @@ interface Item {
 }
 
 type SortField = "updatedAt" | "title" | "createdAt";
+type BulkActionPayload = string | string[];
 
 export default function LibraryPage() {
   const { mode } = useMode();
@@ -78,7 +79,7 @@ export default function LibraryPage() {
     setSelectedBulkTags([]);
   }, [mode]);
 
-  const handleBulkAction = async (action: "delete" | "status" | "add_tags" | "remove_tags", payload?: any) => {
+  const handleBulkAction = async (action: "delete" | "status" | "add_tags" | "remove_tags", payload?: BulkActionPayload) => {
     if (selectedIds.length === 0) return;
     if (action === "delete" && !confirm(`Are you sure you want to delete these ${selectedIds.length} items?`)) {
       return;
@@ -306,6 +307,12 @@ export default function LibraryPage() {
               >
                 📥 Import from Nexus
               </Link>
+              <Link
+                href="/pc-spec-report"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-slate-950/50 hover:bg-slate-900/50 px-5 py-2.5 text-sm font-bold text-foreground transition-all duration-300 shadow-md hover:border-accent/30 hover:scale-105"
+              >
+                🖥️ PC Spec Report
+              </Link>
             </>
           )}
           <button
@@ -475,7 +482,7 @@ export default function LibraryPage() {
                       <option value="playing">Playing</option>
                       <option value="played">Played</option>
                       <option value="backlog">Backlog</option>
-                      <option value="cant_play">Can't Play</option>
+                      <option value="cant_play">Can&apos;t Play</option>
                     </>
                   ) : mode === "movies" ? (
                     <>
