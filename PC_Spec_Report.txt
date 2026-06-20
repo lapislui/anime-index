@@ -1,0 +1,36 @@
+========================================
+         GAMEVERSE PC SPEC REPORT
+========================================
+Generated: 20/6/2026, 3:33:48 pm
+
+=== SYSTEM ===
+Manufacturer: Dell Inc.
+Model: Dell G15 5520
+
+=== CPU ===
+Name: 12th Gen Intel(R) Core(TM) i7-12700H
+Cores: 14
+Threads: 20
+
+=== GPU ===
+GPU Name: NVIDIA GeForce RTX 3050 Ti Laptop GPU
+VRAM: 4 GB
+GPU Name: Intel(R) Iris(R) Xe Graphics
+VRAM: 2 GB
+
+=== MEMORY ===
+Total RAM: 16 GB
+
+=== STORAGE ===
+Drive Name: C:
+Size: 456 GB
+
+=== WINDOWS ===
+OS: Microsoft Windows 11 Home Single Language
+
+=== DIRECTX ===
+DirectX Version: DirectX 12
+
+========================================
+END OF REPORT
+========================================

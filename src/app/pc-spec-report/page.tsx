@@ -214,6 +214,83 @@ export default function PcSpecReportPage() {
     setSpecs(parsePcReport(rawReport));
   };
 
+  const autoDetectSpecs = async () => {
+    let osName = "Unknown OS";
+    const ua = navigator.userAgent;
+    if (ua.indexOf("Win") !== -1) osName = "Windows";
+    else if (ua.indexOf("Mac") !== -1) osName = "macOS";
+    else if (ua.indexOf("Linux") !== -1) osName = "Linux";
+    else if (ua.indexOf("Android") !== -1) osName = "Android";
+    else if (ua.indexOf("like Mac") !== -1) osName = "iOS";
+
+    const threadsCount = navigator.hardwareConcurrency ? String(navigator.hardwareConcurrency) : "Unknown";
+    const devMem = (navigator as unknown as { deviceMemory?: number }).deviceMemory;
+    const ramSize = devMem ? `${devMem} GB` : "Unknown (Sandbox)";
+
+    let gpuName = "Unknown GPU";
+    const navGpu = (navigator as unknown as { gpu?: { requestAdapter: () => Promise<{ name?: string; info?: { device?: string } } | null> } }).gpu;
+    if (navGpu) {
+      try {
+        const adapter = await navGpu.requestAdapter();
+        if (adapter) {
+          const info = (adapter as unknown as { info?: { device?: string } }).info;
+          if (info && info.device) {
+            gpuName = info.device;
+          } else {
+            gpuName = adapter.name || "WebGPU Adapter";
+          }
+        }
+      } catch {}
+    }
+    
+    if (gpuName === "Unknown GPU") {
+      try {
+        const canvas = document.createElement("canvas");
+        const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
+        if (gl) {
+          const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+          if (debugInfo) {
+            gpuName = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || "Unknown GPU";
+          }
+        }
+      } catch {}
+    }
+
+    if (gpuName && gpuName !== "Unknown GPU") {
+      const match = gpuName.match(/(NVIDIA GeForce [A-Za-z0-9 ]+|AMD Radeon [A-Za-z0-9 ]+|Intel[A-Za-z0-9 ]+)/i);
+      if (match) {
+        gpuName = match[0];
+      }
+    }
+
+    let storageVal = "Unknown";
+    if (navigator.storage && navigator.storage.estimate) {
+      try {
+        const estimate = await navigator.storage.estimate();
+        if (estimate.quota) {
+          const quotaGb = Math.round(estimate.quota / (1024 * 1024 * 1024));
+          storageVal = `Browser Quota: ~${quotaGb} GB`;
+        }
+      } catch {}
+    }
+
+    const directxVal = osName === "Windows" ? "DirectX 12" : "N/A";
+
+    setSpecs({
+      manufacturer: "Auto-detected",
+      model: "Browser Client",
+      cpu: `${threadsCount}-Thread CPU`,
+      cores: "Unknown",
+      threads: threadsCount,
+      gpu: gpuName,
+      vram: "Unknown",
+      ram: ramSize,
+      storage: storageVal,
+      os: osName,
+      directx: directxVal,
+    });
+  };
+
   const shareReport = async () => {
     setShareMessage("");
 
@@ -283,8 +360,8 @@ export default function PcSpecReportPage() {
           <div className="glass-panel rounded-2xl p-5 shadow-xl">
             <div className="mb-5">
               <h2 className="text-base font-bold text-foreground">Build Or Import Report</h2>
-              <p className="mt-1 text-xs text-muted">
-                Paste the output from the PowerShell report tool, or fill the fields manually.
+              <p className="mt-1 text-xs text-muted leading-relaxed">
+                Run the automated JS script (<code className="bg-slate-950/80 px-1 py-0.5 rounded text-accent">node scripts/fetch-specs.js</code>) on your PC and paste the generated file content below, use the browser-based auto-detector, or fill the fields manually.
               </p>
             </div>
 
@@ -295,14 +372,23 @@ export default function PcSpecReportPage() {
               className="mb-3 w-full rounded-xl border border-border bg-slate-950/50 px-3 py-3 font-mono text-xs text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
               placeholder="Paste PC_Spec_Report.txt content here..."
             />
-            <button
-              type="button"
-              onClick={importReport}
-              disabled={!rawReport.trim()}
-              className="mb-6 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2 text-xs font-bold text-accent transition-all hover:bg-accent hover:text-slate-950 disabled:pointer-events-none disabled:opacity-50"
-            >
-              Parse Pasted Report
-            </button>
+            <div className="mb-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={importReport}
+                disabled={!rawReport.trim()}
+                className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-2 text-xs font-bold text-accent transition-all hover:bg-accent hover:text-slate-950 disabled:pointer-events-none disabled:opacity-50"
+              >
+                Parse Pasted Report
+              </button>
+              <button
+                type="button"
+                onClick={autoDetectSpecs}
+                className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-500 hover:text-slate-950"
+              >
+                Auto-Detect (Browser JS)
+              </button>
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {[
